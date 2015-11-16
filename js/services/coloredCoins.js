@@ -1,6 +1,6 @@
 'use strict';
 
-function ColoredCoins($rootScope, profileService, addressService, colu, $log, lodash, bitcore) {
+function ColoredCoins($rootScope, profileService, addressService, colu, $log, lodash, configService) {
   var root = {},
       lockedUtxos = [],
       self = this;
@@ -124,7 +124,13 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
 
       $log.debug("Assets for " + address + ": " + JSON.stringify(assetsInfo));
 
-      var assets = [];
+      var assets = [],
+          config = configService.getSync();
+      if (config.assets && config.assets.supported) {
+        assetsInfo = lodash.reject(assetsInfo, function(i) {
+          return config.assets.supported.indexOf(i.assetId) == -1;
+        });
+      }
       assetsInfo.forEach(function(asset) {
         colu.getAssetMetadata(asset, function(err, metadata) {
           if (err) { return cb(err); }
