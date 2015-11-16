@@ -849,10 +849,11 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
       $log.debug("Assets for " + address + ": " + JSON.stringify(assetsInfo));
 
       var assets = [],
-          config = configService.getSync();
+          config = configService.getDefaults();
       if (config.assets && config.assets.supported) {
+        var supportedAssets = lodash.pluck(config.assets.supported, 'assetId');
         assetsInfo = lodash.reject(assetsInfo, function(i) {
-          return config.assets.supported.indexOf(i.assetId) == -1;
+          return supportedAssets.indexOf(i.assetId) == -1;
         });
       }
       assetsInfo.forEach(function(asset) {
@@ -943,6 +944,35 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
 
       colu.issueAsset(issuanceOpts, cb);
     });
+  };
+
+  root.formatAssetAmount = function(amount, asset) {
+
+    function getUnitSymbol(asset) {
+      var symbolFromMetadata;
+      try {
+        symbolFromMetadata = asset.metadata.userData.symbol;
+      } catch (e) {
+      }
+
+      var symbolFromConfig = lodash.find(configService.getDefaults().assets.supported, function(a) {
+        return a.assetId == asset.assetId;
+      }).symbol;
+
+      return symbolFromMetadata || symbolFromConfig || 'units';
+    }
+
+    function formatAssetValue(value, decimalPlaces) {
+      value = (value / Math.pow(10, decimalPlaces)).toFixed(decimalPlaces);
+      var x = value.split('.');
+      var x0 = x[0];
+      var x1 = x[1];
+
+      x0 = x0.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      return x0 + '.' + x1;
+    }
+
+    return formatAssetValue(amount, assets[0].divisible) + ' ' + getUnitSymbol(asset);
   };
 
 
