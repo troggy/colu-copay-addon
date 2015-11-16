@@ -949,15 +949,16 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
   root.formatAssetAmount = function(amount, asset) {
 
     function getUnitSymbol(asset) {
-      var symbolFromMetadata;
+      var symbolFromMetadata, symbolFromConfig;
       try {
         symbolFromMetadata = asset.metadata.userData.symbol;
+
+        symbolFromConfig = lodash.find(configService.getDefaults().assets.supported, function(a) {
+          return a.assetId == asset.assetId;
+        }).symbol;
+
       } catch (e) {
       }
-
-      var symbolFromConfig = lodash.find(configService.getDefaults().assets.supported, function(a) {
-        return a.assetId == asset.assetId;
-      }).symbol;
 
       return symbolFromMetadata || symbolFromConfig || 'units';
     }
@@ -969,10 +970,10 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
       var x1 = x[1];
 
       x0 = x0.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-      return x0 + '.' + x1;
+      return decimalPlaces > 0 ? x0 + '.' + x1 : x0;
     }
 
-    return formatAssetValue(amount, assets[0].divisible) + ' ' + getUnitSymbol(asset);
+    return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + getUnitSymbol(asset);
   };
 
 
