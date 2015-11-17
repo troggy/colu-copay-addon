@@ -67,10 +67,12 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
       if (err) { return cb(err); }
       _setLockedUtxos(utxos);
 
-      root.txidToUTXO = lodash.reduce(utxos, function(result, utxo) {
-        result[utxo.txid + ":" + utxo.vout] = utxo;
-        return result;
-      }, {});
+      root.txidToUTXO = {};
+      root.scriptToUTXO = {};
+      lodash.each(utxos, function(utxo) {
+        root.txidToUTXO[utxo.txid + ":" + utxo.vout] = utxo;
+        root.scriptToUTXO[utxo.scriptPubKey] = utxo;
+      });
       cb();
     });
   };

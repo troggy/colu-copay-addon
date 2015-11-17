@@ -92,12 +92,16 @@ ProcessingTxController.prototype._createAndExecuteProposal = function (txHex, to
 
   var inputs = self._.map(tx.inputs, function (input) {
     input = input.toObject();
-    var storedInput = self.coloredCoins.txidToUTXO[input.prevTxId + ":" + input.outputIndex];
-    if (!storedInput) {
-      input.txId = input.prevTxId;
+    var storedInput = self.coloredCoins.txidToUTXO[input.prevTxId + ":" + input.outputIndex]
+        || self.coloredCoins.scriptToUTXO[input.script || input.scriptPubKey];
+    input.publicKeys = storedInput.publicKeys;
+    input.path = storedInput.path;
+
+    if (!input.txid) {
+      input.txid = input.prevTxId;
+    }
+    if (!input.satoshis) {
       input.satoshis = 0;
-    } else {
-      input = storedInput;
     }
     return input;
   });
