@@ -11,7 +11,7 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
 
       if (!client) return;
 
-      var defaultBroadcastTxProposal = client.broadcastTxProposal;
+      var defaultBroadcastTxProposal = client.broadcastTxProposal.bind(client);
 
       client.broadcastTxProposal = function (txp, cb) {
         if (txp.customData && txp.customData.financeTxId) {

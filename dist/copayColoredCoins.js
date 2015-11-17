@@ -180,7 +180,7 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
 
       if (!client) return;
 
-      var defaultBroadcastTxProposal = client.broadcastTxProposal;
+      var defaultBroadcastTxProposal = client.broadcastTxProposal.bind(client);
 
       client.broadcastTxProposal = function (txp, cb) {
         if (txp.customData && txp.customData.financeTxId) {
@@ -523,12 +523,16 @@ ProcessingTxController.prototype._createAndExecuteProposal = function (txHex, to
 
   var inputs = self._.map(tx.inputs, function (input) {
     input = input.toObject();
-    var storedInput = self.coloredCoins.txidToUTXO[input.prevTxId + ":" + input.outputIndex];
-    if (!storedInput) {
-      input.txId = input.prevTxId;
+    var storedInput = self.coloredCoins.txidToUTXO[input.prevTxId + ":" + input.outputIndex]
+        || self.coloredCoins.scriptToUTXO[input.script || input.scriptPubKey];
+    input.publicKeys = storedInput.publicKeys;
+    input.path = storedInput.path;
+
+    if (!input.txid) {
+      input.txid = input.prevTxId;
+    }
+    if (!input.satoshis) {
       input.satoshis = 0;
-    } else {
-      input = storedInput;
     }
     return input;
   });
@@ -791,10 +795,12 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
       if (err) { return cb(err); }
       _setLockedUtxos(utxos);
 
-      root.txidToUTXO = lodash.reduce(utxos, function(result, utxo) {
-        result[utxo.txid + ":" + utxo.vout] = utxo;
-        return result;
-      }, {});
+      root.txidToUTXO = {};
+      root.scriptToUTXO = {};
+      lodash.each(utxos, function(utxo) {
+        root.txidToUTXO[utxo.txid + ":" + utxo.vout] = utxo;
+        root.scriptToUTXO[utxo.scriptPubKey] = utxo;
+      });
       cb();
     });
   };
