@@ -49,20 +49,31 @@ module
 'use strict';
 
 angular.module('copayAddon.coloredCoins').config(function ($provide) {
-
   $provide.decorator('availableBalanceDirective', function($delegate) {
     var directive = $delegate[0];
-    directive.controller = function($rootScope, $scope, profileService, configService, lodash) {
+    directive.controller = function($rootScope, $scope, profileService, configService, coloredCoins, lodash) {
       var config = configService.getSync().wallet.settings;
-      $rootScope.$on('ColoredCoins/AssetsUpdated', function(event, assets) {
-        var coloredBalanceSat = lodash.reduce(assets, function(total, asset) {
-          total += asset.utxo.value;
-          return total;
-        }, 0);
 
-        var availableBalanceSat = $scope.index.availableBalanceSat - coloredBalanceSat;
-        $scope.availableBalanceStr = profileService.formatAmount(availableBalanceSat) + ' ' + config.unitName;
-        $scope.coloredBalanceStr = profileService.formatAmount(coloredBalanceSat) + ' ' + config.unitName;
+      function setData(assets) {
+        $scope.isAssetWallet = $scope.index.isAssetWallet;
+        if ($scope.isAssetWallet) {
+          $scope.availableBalanceStr = $scope.index.totalAssetBalanceStr;
+        } else {
+          var coloredBalanceSat = lodash.reduce(assets, function(total, asset) {
+            total += asset.utxo.value;
+            return total;
+          }, 0);
+
+          var availableBalanceSat = $scope.index.availableBalanceSat - coloredBalanceSat;
+          $scope.availableBalanceStr = profileService.formatAmount(availableBalanceSat) + ' ' + config.unitName;
+          $scope.coloredBalanceStr = profileService.formatAmount(coloredBalanceSat) + ' ' + config.unitName;
+        }
+      }
+
+      setData(coloredCoins.assets);
+
+      $rootScope.$on('ColoredCoins/AssetsUpdated', function(event, assets) {
+        setData(assets);
       });
     };
     directive.templateUrl = 'colored-coins/views/includes/available-balance.html';
@@ -951,23 +962,33 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
       colu.issueAsset(issuanceOpts, cb);
     });
   };
-
-  root.formatAssetAmount = function(amount, asset) {
-
-    function getUnitSymbol(asset) {
-      var symbolFromMetadata, symbolFromConfig;
-      try {
-        symbolFromMetadata = asset.metadata.userData.symbol;
-
-        symbolFromConfig = lodash.find(configService.getDefaults().assets.supported, function(a) {
-          return a.assetId == asset.assetId;
-        }).symbol;
-
-      } catch (e) {
-      }
-
-      return symbolFromMetadata || symbolFromConfig || 'units';
+  
+  var getSymbolFromMetadata = function(asset) {
+    try {
+      return asset.metadata.userData.symbol;
+    } catch (e) {
     }
+    
+    return null;
+  };
+  
+  var getSymbolFromConfig = function(assetId) {
+    try {
+      return lodash.find(configService.getDefaults().assets.supported, function(a) {
+        return a.assetId === assetId;
+      }).symbol;
+    } catch (e) {
+    }
+    
+    return null;
+  };
+
+  root.getAssetSymbol = function(assetId, asset) {
+    var symbolData = getSymbolFromMetadata(asset) || getSymbolFromConfig(assetId);
+    return UnitSymbol.create(symbolData) || UnitSymbol.DEFAULT;
+  };
+
+  root.formatAssetAmount = function(amount, asset, unitSymbol) {
 
     function formatAssetValue(value, decimalPlaces) {
       value = (value / Math.pow(10, decimalPlaces)).toFixed(decimalPlaces);
@@ -979,7 +1000,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
       return decimalPlaces > 0 ? x0 + '.' + x1 : x0;
     }
 
-    return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + getUnitSymbol(asset);
+    return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + unitSymbol.forAmount(amount);
   };
 
 
@@ -1112,6 +1133,30 @@ angular.module('copayAddon.coloredCoins').factory('insight', function ($http, pr
   };
 });
 
+'use strict';
+
+function UnitSymbol() {}
+
+UnitSymbol.create = function(symbol, pluralSymbol) {
+  if (!symbol) {
+    return null;
+  }
+  
+  if (symbol instanceof Object) {
+    return UnitSymbol.create(symbol.symbol, symbol.pluralSymbol);
+  }
+  var symbolObj = new UnitSymbol();
+  symbolObj.pluralSymbol = pluralSymbol || symbol;
+  symbolObj.symbol = symbol;
+
+  return symbolObj;
+};
+
+UnitSymbol.DEFAULT = UnitSymbol.create('unit', 'units');
+
+UnitSymbol.prototype.forAmount = function(amount) {
+  return amount == 1 ? this.symbol : this.pluralSymbol;
+};
 'use strict';
 
 angular.module('copayAddon.coloredCoins')
