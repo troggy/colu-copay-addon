@@ -1023,6 +1023,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       x0 = x0.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       return decimalPlaces > 0 ? x0 + '.' + x1 : x0;
     }
+    
+    unitSymbol = unitSymbol || root.getAssetSymbol(asset.assetId, asset);
 
     return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + unitSymbol.forAmount(amount);
   };
