@@ -31,7 +31,7 @@ var AssetTransferController = function ($rootScope, $scope, $modalInstance, $tim
       self._setError({ message: "Cannot transfer locked asset" });
       return;
     }
-    $log.debug("Transfering " + transfer._amount + " units(s) of asset " + $scope.asset.asset.assetId + " to " + transfer._address);
+    $log.debug("Transfering " + transfer._amount + " units(s) of asset " + $scope.asset.assetId + " to " + transfer._address);
 
     if (form.$invalid) {
       this.error = gettext('Unable to send transaction proposal');
@@ -56,7 +56,7 @@ var AssetTransferController = function ($rootScope, $scope, $modalInstance, $tim
       var customData = {
         asset: {
           action: 'transfer',
-          assetId: $scope.asset.asset.assetId,
+          assetId: $scope.asset.assetId,
           assetName: $scope.asset.metadata.assetName,
           icon: $scope.asset.icon,
           utxo: lodash.pick($scope.asset.utxo, ['txid', 'index']),

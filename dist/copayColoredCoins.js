@@ -628,7 +628,7 @@ var AssetTransferController = function ($rootScope, $scope, $modalInstance, $tim
       self._setError({ message: "Cannot transfer locked asset" });
       return;
     }
-    $log.debug("Transfering " + transfer._amount + " units(s) of asset " + $scope.asset.asset.assetId + " to " + transfer._address);
+    $log.debug("Transfering " + transfer._amount + " units(s) of asset " + $scope.asset.assetId + " to " + transfer._address);
 
     if (form.$invalid) {
       this.error = gettext('Unable to send transaction proposal');
@@ -653,7 +653,7 @@ var AssetTransferController = function ($rootScope, $scope, $modalInstance, $tim
       var customData = {
         asset: {
           action: 'transfer',
-          assetId: $scope.asset.asset.assetId,
+          assetId: $scope.asset.assetId,
           assetName: $scope.asset.metadata.assetName,
           icon: $scope.asset.icon,
           utxo: lodash.pick($scope.asset.utxo, ['txid', 'index']),
@@ -739,7 +739,8 @@ angular.module('copayAddon.coloredCoins')
 
 'use strict';
 
-function ColoredCoins($rootScope, profileService, addressService, colu, $log, lodash, configService) {
+function ColoredCoins($rootScope, profileService, addressService, colu, $log,
+                      $q, lodash, configService) {
   var root = {},
       lockedUtxos = [],
       self = this;
@@ -792,7 +793,11 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
     addressInfo.utxos.forEach(function(utxo) {
       if (utxo.assets || utxo.assets.length > 0) {
         utxo.assets.forEach(function(asset) {
-          assets.push({ assetId: asset.assetId, amount: asset.amount, utxo: lodash.pick(utxo, [ 'txid', 'index', 'value', 'scriptPubKey']) });
+          assets.push({ 
+            assetId: asset.assetId,
+            amount: asset.amount,
+            utxo: lodash.pick(utxo, [ 'txid', 'index', 'value', 'scriptPubKey']) 
+          });
         });
       }
     });
@@ -842,83 +847,99 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
     _updateLockedUtxos(function(err) {
       if (err) { return cb(err); }
 
-      var checkedAddresses = 0;
-      lodash.each(addresses, function (address) {
-        _getAssetsForAddress(address, function (err, addressAssets) {
-          if (err) { return cb(err); }
-
-          assets = assets.concat(addressAssets);
-
-          if (++checkedAddresses == addresses.length) {
-            return cb(null, assets);
-          }
-        })
+      var assetsMap = {},
+          assetPromises = lodash.map(addresses, function (address) {
+            return _getAssetsForAddress(address, assetsMap);
+          });
+      
+      $q.all(assetPromises).then(function() {
+        cb(null, lodash.values(assetsMap));
+      }, function(err) {
+        cb(err);
       });
     });
   };
+  
+  var _addColoredUtxoToMap = function(asset, metadata, address, network, assetsMap) {
+    var groupedAsset = assetsMap[asset.assetId];
+    if (!groupedAsset) {
+      var isLocked = lodash.includes(self.lockedUtxos, asset.utxo.txid + ":" + asset.utxo.index);
+      groupedAsset = { 
+                      assetId: asset.assetId,
+                      amount: 0,
+                      network: network,
+                      divisible: metadata.divisibility,
+                      reissuable: metadata.lockStatus == false,
+                      icon: _extractAssetIcon(metadata),
+                      issuanceTxid: metadata.issuanceTxid,
+                      metadata: metadata.metadataOfIssuence.data,
+                      locked: isLocked,
+                      utxos: []
+                   };
+      assetsMap[asset.assetId] = groupedAsset;
+    }
+    lodash.assign(asset.utxo, { assetAmount: asset.amount, address: address })
+    groupedAsset.utxos.push(asset.utxo);
+    groupedAsset.amount += asset.amount;
+  };
+  
+  var _filterSupportedAssets = function(assetsInfo) {
+    var config = configService.getDefaults();
+    if (config.assets && config.assets.supported) {
+      var supportedAssets = lodash.pluck(config.assets.supported, 'assetId');
+      assetsInfo = lodash.reject(assetsInfo, function(i) {
+        return supportedAssets.indexOf(i.assetId) == -1;
+      });
+    }
+    return assetsInfo;
+  }
 
-  var _getAssetsForAddress = function(address, cb) {
-    var network = profileService.focusedClient.credentials.network;
-    colu.getAddressInfo(address, function(err, addressInfo) {
-      if (err) { return cb(err); }
-      var assetsInfo = extractAssets(addressInfo);
+  var _getAssetsForAddress = function(address, assetsMap) {
+    return $q(function(resolve, reject) {
+      colu.getAddressInfo(address, function(err, addressInfo) {
+        if (err) { return reject(err); }
 
-      $log.debug("Assets for " + address + ": " + JSON.stringify(assetsInfo));
-
-      var assets = [],
-          config = configService.getDefaults();
-      if (config.assets && config.assets.supported) {
-        var supportedAssets = lodash.pluck(config.assets.supported, 'assetId');
-        assetsInfo = lodash.reject(assetsInfo, function(i) {
-          return supportedAssets.indexOf(i.assetId) == -1;
+        var assetsInfo = extractAssets(addressInfo);
+        $log.debug("Assets for " + address + ": " + JSON.stringify(assetsInfo));
+        assetsInfo = _filterSupportedAssets(assetsInfo);
+        
+        var network = profileService.focusedClient.credentials.network;
+        assetData = assetsInfo.map(function(asset, i) {
+          return $q(function(resolve, reject) {
+            colu.getAssetMetadata(asset, function(err, metadata) {
+              if (err) { return reject(err); }
+              _addColoredUtxoToMap(asset, metadata, address, network, assetsMap);
+              resolve();
+            });
+          });
         });
-      }
-      assetsInfo.forEach(function(asset) {
-        colu.getAssetMetadata(asset, function(err, metadata) {
-          if (err) { return cb(err); }
-          var isLocked = lodash.includes(self.lockedUtxos, asset.utxo.txid + ":" + asset.utxo.index);
-          var a = {
-            assetId: asset.assetId,
-            utxo: asset.utxo,
-            address: address,
-            asset: asset,
-            network: network,
-            divisible: metadata.divisibility,
-            reissuable: metadata.lockStatus == false,
-            icon: _extractAssetIcon(metadata),
-            issuanceTxid: metadata.issuanceTxid,
-            metadata: metadata.metadataOfIssuence.data,
-            locked: isLocked
-          };
-          assets.push(a);
-          if (assetsInfo.length == assets.length) {
-            return cb(null, assets);
-          }
+
+        $q.all(assetData).then(function() {
+          resolve();
+        }, function() {
+          reject();
         });
       });
-      if (assetsInfo.length == assets.length) {
-        return cb(null, assets);
-      }
     });
   };
 
   root.createTransferTx = function(asset, amount, toAddress, cb) {
-    if (amount > asset.asset.amount) {
+    if (amount > asset.amount) {
       return cb({ error: "Cannot transfer more assets then available" }, null);
     }
 
     var to = [{
       "address": toAddress,
       "amount": amount,
-      "assetId": asset.asset.assetId
+      "assetId": asset.assetId
     }];
 
     // transfer the rest of asset back to our address
-    if (amount < asset.asset.amount) {
+    if (amount < asset.amount) {
       to.push({
         "address": asset.address,
-        "amount": asset.asset.amount - amount,
-        "assetId": asset.asset.assetId
+        "amount": asset.amount - amount,
+        "assetId": asset.assetId
       });
     }
 
@@ -991,6 +1012,9 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log, lo
   root.formatAssetAmount = function(amount, asset, unitSymbol) {
 
     function formatAssetValue(value, decimalPlaces) {
+      if (!value) {
+        return '0';
+      }
       value = (value / Math.pow(10, decimalPlaces)).toFixed(decimalPlaces);
       var x = value.split('.');
       var x0 = x[0];
@@ -1246,7 +1270,7 @@ angular.module("colored-coins/views/assets.html", []).run(["$templateCache", fun
     "                </div>\n" +
     "                <div class=\"small-2 columns\">\n" +
     "                  <span class=\"size-16\">\n" +
-    "                    {{ asset.asset.amount }} unit{{ asset.asset.amount != 1 ? 's' : '' }}\n" +
+    "                    {{ asset.amount }} unit{{ asset.amount != 1 ? 's' : '' }}\n" +
     "                    <i class=\"fi-lock\" ng-show=\"asset.locked\"></i>\n" +
     "                  </span>\n" +
     "                </div>\n" +
@@ -1554,7 +1578,7 @@ angular.module("colored-coins/views/modals/asset-details.html", []).run(["$templ
     "        <li class=\"line-b p10 oh\">\n" +
     "            <span class=\"text-gray property-name\" translate>Quantity</span>:\n" +
     "            <span class=\"right\">\n" +
-    "              <time>{{ asset.asset.amount }}</time>\n" +
+    "              <time>{{ asset.amount }}</time>\n" +
     "            </span>\n" +
     "        </li>\n" +
     "        <li class=\"line-b p10 oh\">\n" +
@@ -1837,7 +1861,7 @@ angular.module("colored-coins/views/modals/send.html", []).run(["$templateCache"
     "        <div class=\"size-14 m20t\">\n" +
     "          <span class=\"db text-bold\">\n" +
     "            <span translate>Quantity</span>:\n" +
-    "            {{ asset.asset.amount }}\n" +
+    "            {{ asset.amount }}\n" +
     "          </span>\n" +
     "        </div>\n" +
     "    </div>\n" +
@@ -1893,7 +1917,7 @@ angular.module("colored-coins/views/modals/send.html", []).run(["$templateCache"
     "                            <div class=\"input\">\n" +
     "                                <input type=\"number\" id=\"amount\" ng-disabled=\"home.blockUx || home.lockAmount\" name=\"amount\"\n" +
     "                                       ng-attr-placeholder=\"{{'Amount'|translate}}\"\n" +
-    "                                       ng-model=\"transfer._amount\" min=\"1\" max=\"{{ asset.asset.amount }}\" ng-pattern=\"/^\\d*$/\" required autocomplete=\"off\"\n" +
+    "                                       ng-model=\"transfer._amount\" min=\"1\" max=\"{{ asset.amount }}\" ng-pattern=\"/^\\d*$/\" required autocomplete=\"off\"\n" +
     "                                       ng-focus=\"home.formFocus('amount')\" ng-blur=\"home.formFocus(false)\">\n" +
     "                                <a class=\"postfix\" translate>units</a>\n" +
     "                            </div>\n" +
