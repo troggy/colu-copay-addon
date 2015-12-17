@@ -10,9 +10,10 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
         $scope.isAssetWallet = $scope.index.isAssetWallet;
         if ($scope.isAssetWallet) {
           $scope.availableBalanceStr = $scope.index.totalAssetBalanceStr;
+          $scope.coloredBalanceStr = null;
         } else {
           var coloredBalanceSat = lodash.reduce(assets, function(total, asset) {
-            total += asset.utxo.value;
+            total += lodash.sum(lodash.pluck(asset.utxos, 'value'));
             return total;
           }, 0);
 
@@ -24,8 +25,8 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
 
       setData(coloredCoins.assets);
 
-      $rootScope.$on('ColoredCoins/AssetsUpdated', function(event, assets) {
-        setData(assets);
+      $rootScope.$on('Local/AssetBalanceUpdated', function(event) {
+        setData(coloredCoins.assets);
       });
     };
     directive.templateUrl = 'colored-coins/views/includes/available-balance.html';
