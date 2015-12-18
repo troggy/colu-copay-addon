@@ -9,6 +9,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   // UTXOs "cache"
   root.txidToUTXO = {};
   root.assets = null;
+  root.assetsMap = {};
   root.error = null;
 
   var disableFocusListener = $rootScope.$on('Local/NewFocusedWallet', function() {
@@ -23,20 +24,22 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
 
   var disableBalanceListener = $rootScope.$on('Local/BalanceUpdated', function (event, balance) {
     root.assets = null;
+    root.assetsMap = null;
     root.error = null;
     $rootScope.$emit('ColoredCoins/Error', null);
     var addresses = lodash.pluck(balance.byAddress, 'address');
 
     _setOngoingProcess('Getting assets');
-    _fetchAssets(addresses, function (err, assets) {
+    _fetchAssets(addresses, function (err, assetsMap) {
       if (err) {
         var msg = err.error || err.message;
         root.error = msg;
         $rootScope.$emit('ColoredCoins/Error', msg);
         $log.error(msg);
       } else {
-        root.assets = assets;
-        $rootScope.$emit('ColoredCoins/AssetsUpdated', assets);
+        root.assets = lodash.values(assetsMap);
+        root.assetsMap = assetsMap;
+        $rootScope.$emit('ColoredCoins/AssetsUpdated', root.assets);
       }
       _setOngoingProcess();
     });
@@ -112,9 +115,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
 
   var _fetchAssets = function(addresses, cb) {
-    var assets = [];
     if (addresses.length == 0) {
-      return cb(null, assets);
+      return cb(null, {});
     }
     _updateLockedUtxos(function(err) {
       if (err) { return cb(err); }
@@ -125,7 +127,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           });
       
       $q.all(assetPromises).then(function() {
-        cb(null, lodash.values(assetsMap));
+        cb(null, assetsMap);
       }, function(err) {
         cb(err);
       });
@@ -201,7 +203,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       // first, let's try to use single utxo with exact amount,
       // then try to use smaller utxos to collect required amount (to reduce fragmentation)
       var totalAmount = 0,
-          firstUsedIndex,
+          firstUsedIndex = -1,
           addresses = [];
       for (var i = utxos.length - 1; i >= 0; i--) {
         if (utxos[i].assetAmount > amount) continue;
@@ -214,7 +216,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           return { addresses: addresses, amount: totalAmount };
         }
       }
-      
+
       // not enough smaller utxos, use the one bigger, if any
       if (firstUsedIndex < utxos.length - 1) {
         return { 

@@ -30,19 +30,15 @@ module
         },
         formatPendingTxp: function(txp) {
           if (txp.customData && txp.customData.asset) {
-            var value = txp.amountStr;
-            var asset = txp.customData.asset;
-            txp.amountStr = asset.amount + " unit" + (asset.amount > 1 ? "s" : "") + " of " + asset.assetName + " (" + value + ")";
-            txp.showSingle = true;
-            txp.toAddress = txp.outputs[0].toAddress; // txproposal
+            var assetId = txp.customData.asset.assetId,
+                amount = txp.customData.asset.amount,
+                asset = coloredCoins.assetsMap[assetId];
+            txp.amountStr = coloredCoins.formatAssetAmount(amount, asset);
             txp.address = txp.outputs[0].address;     // txhistory
           }
         },
         processCreateTxOpts: function(txOpts) {
           txOpts.utxosToExclude = (txOpts.utxosToExclude || []).concat(coloredCoins.getColoredUtxos());
-        },
-        txTemplateUrl: function() {
-          return 'colored-coins/views/includes/transaction.html';
         }
       });
     });
@@ -751,6 +747,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   // UTXOs "cache"
   root.txidToUTXO = {};
   root.assets = null;
+  root.assetsMap = {};
   root.error = null;
 
   var disableFocusListener = $rootScope.$on('Local/NewFocusedWallet', function() {
@@ -765,20 +762,22 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
 
   var disableBalanceListener = $rootScope.$on('Local/BalanceUpdated', function (event, balance) {
     root.assets = null;
+    root.assetsMap = null;
     root.error = null;
     $rootScope.$emit('ColoredCoins/Error', null);
     var addresses = lodash.pluck(balance.byAddress, 'address');
 
     _setOngoingProcess('Getting assets');
-    _fetchAssets(addresses, function (err, assets) {
+    _fetchAssets(addresses, function (err, assetsMap) {
       if (err) {
         var msg = err.error || err.message;
         root.error = msg;
         $rootScope.$emit('ColoredCoins/Error', msg);
         $log.error(msg);
       } else {
-        root.assets = assets;
-        $rootScope.$emit('ColoredCoins/AssetsUpdated', assets);
+        root.assets = lodash.values(assetsMap);
+        root.assetsMap = assetsMap;
+        $rootScope.$emit('ColoredCoins/AssetsUpdated', root.assets);
       }
       _setOngoingProcess();
     });
@@ -854,9 +853,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
 
   var _fetchAssets = function(addresses, cb) {
-    var assets = [];
     if (addresses.length == 0) {
-      return cb(null, assets);
+      return cb(null, {});
     }
     _updateLockedUtxos(function(err) {
       if (err) { return cb(err); }
@@ -867,7 +865,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           });
       
       $q.all(assetPromises).then(function() {
-        cb(null, lodash.values(assetsMap));
+        cb(null, assetsMap);
       }, function(err) {
         cb(err);
       });
@@ -943,7 +941,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       // first, let's try to use single utxo with exact amount,
       // then try to use smaller utxos to collect required amount (to reduce fragmentation)
       var totalAmount = 0,
-          firstUsedIndex,
+          firstUsedIndex = -1,
           addresses = [];
       for (var i = utxos.length - 1; i >= 0; i--) {
         if (utxos[i].assetAmount > amount) continue;
@@ -956,7 +954,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           return { addresses: addresses, amount: totalAmount };
         }
       }
-      
+
       // not enough smaller utxos, use the one bigger, if any
       if (firstUsedIndex < utxos.length - 1) {
         return { 
@@ -1333,7 +1331,7 @@ angular.module('copayAddon.coloredCoins')
       }
     });
 
-angular.module('copayAssetViewTemplates', ['colored-coins/views/assets.html', 'colored-coins/views/includes/asset-status.html', 'colored-coins/views/includes/available-balance.html', 'colored-coins/views/includes/topbar.html', 'colored-coins/views/includes/transaction.html', 'colored-coins/views/landing.html', 'colored-coins/views/modals/asset-details.html', 'colored-coins/views/modals/issue-status.html', 'colored-coins/views/modals/issue.html', 'colored-coins/views/modals/send.html', 'colored-coins/views/modals/transfer-status.html']);
+angular.module('copayAssetViewTemplates', ['colored-coins/views/assets.html', 'colored-coins/views/includes/asset-status.html', 'colored-coins/views/includes/available-balance.html', 'colored-coins/views/includes/topbar.html', 'colored-coins/views/landing.html', 'colored-coins/views/modals/asset-details.html', 'colored-coins/views/modals/issue-status.html', 'colored-coins/views/modals/issue.html', 'colored-coins/views/modals/send.html', 'colored-coins/views/modals/transfer-status.html']);
 
 angular.module("colored-coins/views/assets.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("colored-coins/views/assets.html",
@@ -1535,52 +1533,6 @@ angular.module("colored-coins/views/includes/topbar.html", []).run(["$templateCa
     "        </h1>\n" +
     "    </section>\n" +
     "</nav>\n" +
-    "");
-}]);
-
-angular.module("colored-coins/views/includes/transaction.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("colored-coins/views/includes/transaction.html",
-    "<div class=\"ng-animate-disabled row collapse last-transactions-content line-b\"\n" +
-    "     ng-class=\"{'text-gray':!tx.pendingForUs}\"\n" +
-    "     ng-click=\"home.openTxpModal(tx, index.copayers)\"\n" +
-    "     ng-init=\"isIssuance = tx.customData.asset.action == 'issue'\">\n" +
-    "    <div class=\"small-1 columns text-center\" >\n" +
-    "        <i class=\"icon-circle-active size-10\" ng-show=\"tx.pendingForUs\" ng-style=\"{'color':index.backgroundColor}\" style=\"margin-top:8px;\"></i>\n" +
-    "        &nbsp;\n" +
-    "    </div>\n" +
-    "    <div class=\"small-10 columns\">\n" +
-    "        <div ng-if=\"!$root.updatingBalance\">\n" +
-    "            <span class=\"text-bold size-16\">\n" +
-    "                <span ng-show=\"isIssuance\" translate>Issue</span>\n" +
-    "                <span ng-hide=\"isIssuance\" translate>Send</span>\n" +
-    "                {{tx.amountStr}}\n" +
-    "            </span>\n" +
-    "            <time class=\"right size-12 text-gray m5t\">{{ (tx.ts || tx.createdOn ) * 1000 | amTimeAgo}}</time>\n" +
-    "        </div>\n" +
-    "        <div class=\"ellipsis size-14\">\n" +
-    "        <span ng-if=\"!tx.showSingle && !isIssuance\">\n" +
-    "          <span translate>Recipients</span>:\n" +
-    "          <span>{{tx.outputs.length}}</span>\n" +
-    "        </span>\n" +
-    "        <span ng-if=\"tx.showSingle && !isIssuance\">\n" +
-    "          <span translate>To</span>:\n" +
-    "          <span ng-if=\"tx.merchant\">\n" +
-    "            <span ng-show=\"tx.merchant.pr.ca\"><i class=\"fi-lock\"></i> {{tx.merchant.domain}}</span>\n" +
-    "            <span ng-show=\"!tx.merchant.pr.ca\"><i class=\"fi-unlock\"></i> {{tx.merchant.domain}}</span>\n" +
-    "          </span>\n" +
-    "          <contact address=\"{{tx.toAddress}}\" ng-hide=\"tx.merchant\"> </contact>\n" +
-    "          {{tx.toAddress}}\n" +
-    "        </span>\n" +
-    "        </div>\n" +
-    "        <div class=\"ellipsis text-gray size-14\">\n" +
-    "            {{tx.message}}\n" +
-    "        </div>\n" +
-    "    </div>\n" +
-    "    <div class=\"small-1 columns text-right\">\n" +
-    "        <br>\n" +
-    "        <i class=\"icon-arrow-right3 size-18\"></i>\n" +
-    "    </div>\n" +
-    "</div>\n" +
     "");
 }]);
 
