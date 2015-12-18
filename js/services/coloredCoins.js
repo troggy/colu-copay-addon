@@ -1,7 +1,7 @@
 'use strict';
 
 function ColoredCoins($rootScope, profileService, addressService, colu, $log,
-                      $q, lodash, configService) {
+                      $q, lodash, configService, bitcore) {
   var root = {},
       lockedUtxos = [],
       self = this;
@@ -53,13 +53,24 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
 
     addressInfo.utxos.forEach(function(utxo) {
       if (utxo.assets || utxo.assets.length > 0) {
-        utxo.assets.forEach(function(asset) {
-          assets.push({ 
-            assetId: asset.assetId,
-            amount: asset.amount,
-            utxo: lodash.pick(utxo, [ 'txid', 'index', 'value', 'scriptPubKey']) 
-          });
-        });
+        var utxoToKeep = lodash.pick(utxo, [ 'txid', 'index', 'value', 'scriptPubKey'])
+        var utxoAssets = lodash
+          .chain(utxo.assets)
+          .reduce( function(map, asset) {
+            var assetSummary = map[asset.assetId];
+            if (!assetSummary) {
+              map[asset.assetId] = assetSummary = { 
+                amount: 0, 
+                assetId: asset.assetId,
+                utxo: utxoToKeep
+              };
+            }
+            assetSummary.amount += asset.amount;
+            return map;
+          }, {})
+          .values()
+          .value();
+        assets = assets.concat(utxoAssets);
       }
     });
 
@@ -183,8 +194,39 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       });
     });
   };
+  
+  var _selectUtxos = function(utxos, amount) {
+      utxos = lodash.sortBy(utxos, 'assetAmount');
+      
+      // first, let's try to use single utxo with exact amount,
+      // then try to use smaller utxos to collect required amount (to reduce fragmentation)
+      var totalAmount = 0,
+          firstUsedIndex,
+          addresses = [];
+      for (var i = utxos.length - 1; i >= 0; i--) {
+        if (utxos[i].assetAmount > amount) continue;
+        if (!firstUsedIndex) { 
+          firstUsedIndex = i;
+        }
+        totalAmount += utxos[i].assetAmount;
+        addresses.push(utxos[i].address);
+        if (totalAmount >= amount) {
+          return { addresses: addresses, amount: totalAmount };
+        }
+      }
+      
+      // not enough smaller utxos, use the one bigger, if any
+      if (firstUsedIndex < utxos.length - 1) {
+        return { 
+          addresses: [utxos[firstUsedIndex + 1].address], 
+          amount: utxos[firstUsedIndex + 1].assetAmount
+        };
+      }
+      
+      return null;
+  };
 
-  root.createTransferTx = function(asset, amount, toAddress, cb) {
+  var createTransferTx = function(asset, amount, toAddress, cb) {
     if (amount > asset.amount) {
       return cb({ error: "Cannot transfer more assets then available" }, null);
     }
@@ -194,25 +236,30 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       "amount": amount,
       "assetId": asset.assetId
     }];
+    
+    var utxos = _selectUtxos(asset.utxos, amount);
+    if (!utxos) {
+      return cb({ message: 'Not enough assets' });
+    }
 
     // transfer the rest of asset back to our address
-    if (amount < asset.amount) {
+    if (amount < utxos.amount) {
       to.push({
-        "address": asset.address,
-        "amount": asset.amount - amount,
+        "address": utxos.addresses[0],
+        "amount": utxos.amount - amount,
         "assetId": asset.assetId
       });
     }
 
     var transfer = {
-      from: [asset.address],
+      from: utxos.addresses,
       to: to,
       flags: {
         injectPreviousOutput: true
       }
     };
 
-    colu.createTx(asset.address, 'send', transfer, cb);
+    colu.createTx(utxos.addresses[0], 'send', transfer, cb);
   };
 
   root.createIssueTx = function(issuance, cb) {
@@ -288,6 +335,89 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     unitSymbol = unitSymbol || root.getAssetSymbol(asset.assetId, asset);
 
     return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + unitSymbol.forAmount(amount);
+  };
+  
+  root.sendTransferTxProposal = function (amount, toAddress, asset, cb) {
+    if (asset.locked) {
+      return cb({ message: "Cannot transfer locked asset" });
+    }
+    $log.debug("Transfering " + amount + " units(s) of asset " + asset.assetId + " to " + toAddress);
+
+    var fc = profileService.focusedClient;
+    if (fc.isPrivKeyEncrypted()) {
+      profileService.unlockFC(function (err) {
+        if (err) return cb(err);
+        return transferAsset(amount, toAddress, asset, cb);
+      });
+      return;
+    }
+
+    createTransferTx(asset, amount, toAddress, function (err, result) {
+      if (err) { 
+        return cb(err);
+      }
+
+      var customData = {
+        asset: {
+          action: 'transfer',
+          assetId: asset.assetId,
+          assetName: asset.metadata.assetName,
+          icon: asset.icon,
+          amount: amount
+        },
+        financeTxId: result.financeTxid
+      };
+      sendTxProposal(result.txHex, toAddress, customData, cb);
+    });
+  };
+
+  var sendTxProposal = function (txHex, toAddress, customData, cb) {
+    var fc = profileService.focusedClient;
+    var tx = new bitcore.Transaction(txHex);
+    $log.debug(JSON.stringify(tx.toObject(), null, 2));
+
+    var inputs = lodash.map(tx.inputs, function (input) {
+      input = input.toObject();
+      var storedInput = root.txidToUTXO[input.prevTxId + ":" + input.outputIndex]
+          || root.scriptToUTXO[input.script || input.scriptPubKey];
+      input.publicKeys = storedInput.publicKeys;
+      input.path = storedInput.path;
+
+      if (!input.txid) {
+        input.txid = input.prevTxId;
+      }
+      if (!input.satoshis) {
+        input.satoshis = 0;
+      }
+      return input;
+    });
+
+    var outputs = lodash.chain(tx.outputs)
+        .map(function (o) {
+          return { script: o.script.toString(), amount: o.satoshis };
+        })
+        .value();
+
+    // for Copay to show recipient properly
+    outputs[0].toAddress = toAddress;
+
+    fc.sendTxProposal({
+      type: 'external',
+      inputs: inputs,
+      outputs: outputs,
+      noOutputsShuffle: true,
+      message: '',
+      payProUrl: null,
+      feePerKb: 43978,
+      fee: 5000,
+      customData: customData
+    }, function (err, txp) {
+      if (err) {
+        return cb(err);
+      }
+      txp.changeAddress = inputs[0].address;
+      return cb(null, txp);
+    });
   };
 
 

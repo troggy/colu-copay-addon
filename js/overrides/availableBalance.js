@@ -7,7 +7,7 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
       var config = configService.getSync().wallet.settings;
 
       function setData(assets) {
-        $scope.isAssetWallet = $scope.index.isAssetWallet;
+        $scope.isAssetWallet = $scope.index.walletAsset ? $scope.index.walletAsset.isAsset : false;
         if ($scope.isAssetWallet) {
           $scope.availableBalanceStr = $scope.index.totalAssetBalanceStr;
           $scope.coloredBalanceStr = null;

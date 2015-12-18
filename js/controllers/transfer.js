@@ -31,40 +31,42 @@ var AssetTransferController = function ($rootScope, $scope, $modalInstance, $tim
       self._setError({ message: "Cannot transfer locked asset" });
       return;
     }
-    $log.debug("Transfering " + transfer._amount + " units(s) of asset " + $scope.asset.assetId + " to " + transfer._address);
 
     if (form.$invalid) {
       this.error = gettext('Unable to send transaction proposal');
       return;
     }
 
-    var fc = profileService.focusedClient;
-    if (fc.isPrivKeyEncrypted()) {
-      profileService.unlockFC(function (err) {
-        if (err) return self._setError(err);
-        return $scope.transferAsset(transfer, form);
-      });
-      return;
-    }
-
-    self.setOngoingProcess(gettext('Creating transfer transaction'));
-    coloredCoins.createTransferTx($scope.asset, transfer._amount, transfer._address, function (err, result) {
+    coloredCoins.sendTransferTxProposal(transfer._amount, transfer._address, $scope.asset, function(err, txp) {
       if (err) {
-        self._handleError(err);
+        self.setOngoingProcess();
+        profileService.lockFC();
+        return self._handleError(err);
+      }
+      
+      if (!fc.canSign() && !fc.isPrivKeyExternal()) {
+        $log.info('No signing proposal: No private key')
+        self.setOngoingProcess();
+        self.resetForm();
+        txStatus.notify(txp, function() {
+          return $scope.$emit('Local/TxProposalAction');
+        });
+        return;
       }
 
-      var customData = {
-        asset: {
-          action: 'transfer',
-          assetId: $scope.asset.assetId,
-          assetName: $scope.asset.metadata.assetName,
-          icon: $scope.asset.icon,
-          utxo: lodash.pick($scope.asset.utxo, ['txid', 'index']),
-          amount: transfer._amount
-        },
-        financeTxId: result.financeTxid
-      };
-      self._createAndExecuteProposal(result.txHex, transfer._address, customData);
+      self.signAndBroadcast(txp, function(err) {
+        self.setOngoingProcess();
+        self.resetForm();
+        if (err) {
+          self.error = err.message ? err.message : gettext('The payment was created but could not be completed. Please try again from home screen');
+          $scope.$emit('Local/TxProposalAction');
+          $timeout(function() {
+            $scope.$digest();
+          }, 1);
+        } else {
+          self.$scope.cancel();
+        }
+      });
     });
   };
 };
