@@ -34,6 +34,7 @@ module
                 amount = txp.customData.asset.amount,
                 asset = coloredCoins.assetsMap[assetId];
             txp.amountStr = coloredCoins.formatAssetAmount(amount, asset);
+            txp.toAddress = txp.outputs[0].toAddress; // txproposal
             txp.address = txp.outputs[0].address;     // txhistory
           }
         },
