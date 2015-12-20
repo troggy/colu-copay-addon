@@ -34,7 +34,7 @@ ProcessingTxController.prototype.setOngoingProcess = function (name) {
 
 ProcessingTxController.prototype._setError = function (err) {
   var fc = this.profileService.focusedClient;
-  this.$log.warn(err);
+  this.$log.error(err);
   var errMessage = fc.credentials.m > 1
       ? this.gettext('Could not create transaction proposal')
       : this.gettext('Could not perform transaction');

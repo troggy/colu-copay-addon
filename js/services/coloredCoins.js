@@ -265,7 +265,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           addresses = [];
       for (var i = utxos.length - 1; i >= 0; i--) {
         if (utxos[i].assetAmount > amount) continue;
-        if (!firstUsedIndex) { 
+        if (firstUsedIndex < 0) { 
           firstUsedIndex = i;
         }
         totalAmount += utxos[i].assetAmount;
@@ -414,7 +414,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
 
     createTransferTx(asset, amount, toAddress, function (err, result) {
       if (err) { 
-        return cb(err);
+        return cb(err.error || err);
       }
 
       var customData = {
