@@ -41,10 +41,11 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
     directive.controller = function($rootScope, $scope, profileService, configService, coloredCoins, lodash) {
       var config = configService.getSync().wallet.settings;
 
-      function setData(assets) {
-        $scope.isAssetWallet = $scope.index.asset ? $scope.index.asset.isAsset : false;
+      function setData(assets, walletAsset) {
+        $scope.isAssetWallet = walletAsset.isAsset;
         if ($scope.isAssetWallet) {
-          $scope.availableBalanceStr = $scope.index.asset.balanceStr;
+          $scope.availableBalanceStr = walletAsset.asset.availableBalanceStr;
+          $scope.lockedBalanceStr = walletAsset.asset.lockedBalanceStr;
           $scope.coloredBalanceStr = null;
         } else {
           var coloredBalanceSat = lodash.reduce(assets, function(total, asset) {
@@ -52,16 +53,19 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
             return total;
           }, 0);
 
+          $scope.lockedBalanceStr = $scope.index.lockedBalanceSat;
           var availableBalanceSat = $scope.index.availableBalanceSat - coloredBalanceSat;
           $scope.availableBalanceStr = profileService.formatAmount(availableBalanceSat) + ' ' + config.unitName;
           $scope.coloredBalanceStr = profileService.formatAmount(coloredBalanceSat) + ' ' + config.unitName;
         }
       }
 
-      coloredCoins.getAssets().then(setData);
+      coloredCoins.getAssets().then(function(assets) { 
+        setData(assets, walletAsset);
+      });
 
-      $rootScope.$on('Local/WalletAssetUpdated', function(event) {
-        setData(coloredCoins.assets);
+      $rootScope.$on('Local/WalletAssetUpdated', function(event, walletAsset) {
+        setData(coloredCoins.assets, walletAsset);
       });
     };
     directive.templateUrl = 'colored-coins/views/includes/available-balance.html';
@@ -466,7 +470,7 @@ ProcessingTxController.prototype.setOngoingProcess = function (name) {
 
 ProcessingTxController.prototype._setError = function (err) {
   var fc = this.profileService.focusedClient;
-  this.$log.warn(err);
+  this.$log.error(err);
   var errMessage = fc.credentials.m > 1
       ? this.gettext('Could not create transaction proposal')
       : this.gettext('Could not perform transaction');
@@ -915,6 +919,9 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       $q.all(assetPromises).then(function() {
         lodash.each(lodash.values(assetsMap), function(asset) {
             asset.balanceStr = root.formatAssetAmount(asset.amount, asset);
+            asset.lockedBalanceStr = root.formatAssetAmount(asset.lockedAmount, asset);
+            asset.availableBalance = asset.amount - asset.lockedAmount;
+            asset.availableBalanceStr = root.formatAssetAmount(asset.availableBalance, asset);
         });
         cb(null, assetsMap);
       }, function(err) {
@@ -926,7 +933,6 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   var _addColoredUtxoToMap = function(asset, metadata, address, network, assetsMap) {
     var groupedAsset = assetsMap[asset.assetId];
     if (!groupedAsset) {
-      var isLocked = lodash.includes(self.lockedUtxos, asset.utxo.txid + ":" + asset.utxo.index);
       groupedAsset = { 
                       assetId: asset.assetId,
                       amount: 0,
@@ -936,12 +942,16 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
                       icon: _extractAssetIcon(metadata),
                       issuanceTxid: metadata.issuanceTxid,
                       metadata: metadata.metadataOfIssuence.data,
-                      locked: isLocked,
+                      lockedAmount: 0,
                       utxos: []
                    };
       assetsMap[asset.assetId] = groupedAsset;
     }
-    lodash.assign(asset.utxo, { assetAmount: asset.amount, address: address })
+    var isLocked = lodash.includes(self.lockedUtxos, asset.utxo.txid + ":" + asset.utxo.index);
+    if (isLocked) {
+      groupedAsset.lockedAmount += asset.amount;
+    }
+    lodash.assign(asset.utxo, { assetAmount: asset.amount, address: address, isLocked: isLocked })
     groupedAsset.utxos.push(asset.utxo);
     groupedAsset.amount += asset.amount;
   };
@@ -995,7 +1005,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           firstUsedIndex = -1,
           addresses = [];
       for (var i = utxos.length - 1; i >= 0; i--) {
-        if (utxos[i].assetAmount > amount) continue;
+        if (utxos[i].assetAmount > amount || utxos[i].isLocked) continue;
         if (firstUsedIndex < 0) { 
           firstUsedIndex = i;
         }
@@ -1007,7 +1017,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       }
 
       // not enough smaller utxos, use the one bigger, if any
-      if (firstUsedIndex < utxos.length - 1) {
+      if (firstUsedIndex < utxos.length - 1 && !utxos[firstUsedIndex + 1].isLocked) {
         return { 
           addresses: [utxos[firstUsedIndex + 1].address], 
           amount: utxos[firstUsedIndex + 1].assetAmount
@@ -1018,7 +1028,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
 
   var createTransferTx = function(asset, amount, toAddress, cb) {
-    if (amount > asset.amount) {
+    if (amount > asset.availableBalance) {
       return cb({ error: "Cannot transfer more assets then available" }, null);
     }
 
@@ -1123,15 +1133,14 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       return decimalPlaces > 0 ? x0 + '.' + x1 : x0;
     }
     
-    unitSymbol = unitSymbol || root.getAssetSymbol(asset.assetId, asset);
+    if (!asset.unitSymbol) {
+      asset.unitSymbol = unitSymbol || root.getAssetSymbol(asset.assetId, asset);
+    }
 
-    return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + unitSymbol.forAmount(amount);
+    return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + asset.unitSymbol.forAmount(amount);
   };
   
   root.sendTransferTxProposal = function (amount, toAddress, asset, cb) {
-    if (asset.locked) {
-      return cb({ message: "Cannot transfer locked asset" });
-    }
     $log.debug("Transfering " + amount + " units(s) of asset " + asset.assetId + " to " + toAddress);
 
     var fc = profileService.focusedClient;
@@ -1174,6 +1183,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           || root.scriptToUTXO[input.script || input.scriptPubKey];
       input.publicKeys = storedInput.publicKeys;
       input.path = storedInput.path;
+      input.vout = input.vout || input.outputIndex;
 
       if (!input.txid) {
         input.txid = input.prevTxId;
@@ -1556,11 +1566,11 @@ angular.module("colored-coins/views/includes/available-balance.html", []).run(["
     "                <span translate>Available Balance</span>:\n" +
     "                {{ availableBalanceStr }}\n" +
     "              </span>\n" +
-    "              <span class=\"db text-gray\" ng-show=\"index.lockedBalanceSat\">\n" +
-    "                {{ index.lockedBalanceStr }}\n" +
+    "              <span class=\"db text-gray\" ng-show=\"lockedBalanceStr\">\n" +
+    "                {{ lockedBalanceStr }}\n" +
     "                <span translate>locked by pending payments</span>\n" +
     "              </span>\n" +
-    "              <span class=\"text-gray\" ng-show=\"coloredBalanceStr\">\n" +
+    "              <span class=\"text-gray\" ng-show=\"coloredBalanceStr && !isAssetWallet\">\n" +
     "                {{ coloredBalanceStr }}\n" +
     "                <span translate>are used to hold assets</span>\n" +
     "              </span>\n" +
@@ -72321,14 +72331,11 @@ Colu.prototype.getTransactionsForAddresses = function (addresses, callback) {
     if (!response || response.statusCode !== 200) return callback(body)
     var addressesInfo = body
     var transactions = []
-    var txids = []
 
     addressesInfo.forEach(function (addressInfo) {
       if (addressInfo.transactions) {
         addressInfo.transactions.forEach(function (transaction) {
-          if (txids.indexOf(transaction.txis) === -1) {
-            transactions.push(transaction)
-          }
+          transactions.push(transaction)
         })
       }
     })

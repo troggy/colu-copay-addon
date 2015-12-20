@@ -6,10 +6,11 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
     directive.controller = function($rootScope, $scope, profileService, configService, coloredCoins, lodash) {
       var config = configService.getSync().wallet.settings;
 
-      function setData(assets) {
-        $scope.isAssetWallet = $scope.index.asset ? $scope.index.asset.isAsset : false;
+      function setData(assets, walletAsset) {
+        $scope.isAssetWallet = walletAsset.isAsset;
         if ($scope.isAssetWallet) {
-          $scope.availableBalanceStr = $scope.index.asset.balanceStr;
+          $scope.availableBalanceStr = walletAsset.asset.availableBalanceStr;
+          $scope.lockedBalanceStr = walletAsset.asset.lockedBalanceStr;
           $scope.coloredBalanceStr = null;
         } else {
           var coloredBalanceSat = lodash.reduce(assets, function(total, asset) {
@@ -17,16 +18,19 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
             return total;
           }, 0);
 
+          $scope.lockedBalanceStr = $scope.index.lockedBalanceSat;
           var availableBalanceSat = $scope.index.availableBalanceSat - coloredBalanceSat;
           $scope.availableBalanceStr = profileService.formatAmount(availableBalanceSat) + ' ' + config.unitName;
           $scope.coloredBalanceStr = profileService.formatAmount(coloredBalanceSat) + ' ' + config.unitName;
         }
       }
 
-      coloredCoins.getAssets().then(setData);
+      coloredCoins.getAssets().then(function(assets) { 
+        setData(assets, walletAsset);
+      });
 
-      $rootScope.$on('Local/WalletAssetUpdated', function(event) {
-        setData(coloredCoins.assets);
+      $rootScope.$on('Local/WalletAssetUpdated', function(event, walletAsset) {
+        setData(coloredCoins.assets, walletAsset);
       });
     };
     directive.templateUrl = 'colored-coins/views/includes/available-balance.html';

@@ -184,6 +184,9 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       $q.all(assetPromises).then(function() {
         lodash.each(lodash.values(assetsMap), function(asset) {
             asset.balanceStr = root.formatAssetAmount(asset.amount, asset);
+            asset.lockedBalanceStr = root.formatAssetAmount(asset.lockedAmount, asset);
+            asset.availableBalance = asset.amount - asset.lockedAmount;
+            asset.availableBalanceStr = root.formatAssetAmount(asset.availableBalance, asset);
         });
         cb(null, assetsMap);
       }, function(err) {
@@ -195,7 +198,6 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   var _addColoredUtxoToMap = function(asset, metadata, address, network, assetsMap) {
     var groupedAsset = assetsMap[asset.assetId];
     if (!groupedAsset) {
-      var isLocked = lodash.includes(self.lockedUtxos, asset.utxo.txid + ":" + asset.utxo.index);
       groupedAsset = { 
                       assetId: asset.assetId,
                       amount: 0,
@@ -205,12 +207,16 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
                       icon: _extractAssetIcon(metadata),
                       issuanceTxid: metadata.issuanceTxid,
                       metadata: metadata.metadataOfIssuence.data,
-                      locked: isLocked,
+                      lockedAmount: 0,
                       utxos: []
                    };
       assetsMap[asset.assetId] = groupedAsset;
     }
-    lodash.assign(asset.utxo, { assetAmount: asset.amount, address: address })
+    var isLocked = lodash.includes(self.lockedUtxos, asset.utxo.txid + ":" + asset.utxo.index);
+    if (isLocked) {
+      groupedAsset.lockedAmount += asset.amount;
+    }
+    lodash.assign(asset.utxo, { assetAmount: asset.amount, address: address, isLocked: isLocked })
     groupedAsset.utxos.push(asset.utxo);
     groupedAsset.amount += asset.amount;
   };
@@ -264,7 +270,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           firstUsedIndex = -1,
           addresses = [];
       for (var i = utxos.length - 1; i >= 0; i--) {
-        if (utxos[i].assetAmount > amount) continue;
+        if (utxos[i].assetAmount > amount || utxos[i].isLocked) continue;
         if (firstUsedIndex < 0) { 
           firstUsedIndex = i;
         }
@@ -276,7 +282,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       }
 
       // not enough smaller utxos, use the one bigger, if any
-      if (firstUsedIndex < utxos.length - 1) {
+      if (firstUsedIndex < utxos.length - 1 && !utxos[firstUsedIndex + 1].isLocked) {
         return { 
           addresses: [utxos[firstUsedIndex + 1].address], 
           amount: utxos[firstUsedIndex + 1].assetAmount
@@ -287,7 +293,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
 
   var createTransferTx = function(asset, amount, toAddress, cb) {
-    if (amount > asset.amount) {
+    if (amount > asset.availableBalance) {
       return cb({ error: "Cannot transfer more assets then available" }, null);
     }
 
@@ -392,15 +398,14 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       return decimalPlaces > 0 ? x0 + '.' + x1 : x0;
     }
     
-    unitSymbol = unitSymbol || root.getAssetSymbol(asset.assetId, asset);
+    if (!asset.unitSymbol) {
+      asset.unitSymbol = unitSymbol || root.getAssetSymbol(asset.assetId, asset);
+    }
 
-    return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + unitSymbol.forAmount(amount);
+    return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + asset.unitSymbol.forAmount(amount);
   };
   
   root.sendTransferTxProposal = function (amount, toAddress, asset, cb) {
-    if (asset.locked) {
-      return cb({ message: "Cannot transfer locked asset" });
-    }
     $log.debug("Transfering " + amount + " units(s) of asset " + asset.assetId + " to " + toAddress);
 
     var fc = profileService.focusedClient;
@@ -443,6 +448,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           || root.scriptToUTXO[input.script || input.scriptPubKey];
       input.publicKeys = storedInput.publicKeys;
       input.path = storedInput.path;
+      input.vout = input.vout || input.outputIndex;
 
       if (!input.txid) {
         input.txid = input.prevTxId;
