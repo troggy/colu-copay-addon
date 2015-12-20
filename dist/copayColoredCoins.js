@@ -22,7 +22,8 @@ module
       addonManager.registerAddon({
         formatPendingTxp: function(txp) {
           if (txp.customData && txp.customData.asset) {
-            txp.amountStr = txp.customData.asset.balanceStr;
+            txp.amountStr = txp.customData.asset.balanceStr || txp.amountStr + '(colored)';
+            txp.isColored = true;
             txp.toAddress = txp.outputs[0].toAddress; // txproposal
             txp.address = txp.outputs[0].address;     // txhistory
           }
@@ -731,7 +732,7 @@ angular.module('copayAddon.coloredCoins')
 'use strict';
 
 function ColoredCoins($rootScope, profileService, addressService, colu, $log,
-                      $q, lodash, configService, bitcore) {
+                      $q, $timeout, lodash, configService, bitcore) {
   var root = {},
       lockedUtxos = [],
       self = this;
@@ -739,10 +740,13 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       
   self.txs = $q.defer(),
   self.assets = $q.defer();
+  self._queued = {};
+  self.isAvailable = false;
 
   // UTXOs "cache"
   root.txidToUTXO = {};
   root.assets = null;
+  root.txs = null;
   root.assetsMap = {};
   root.error = null;
 
@@ -752,22 +756,34 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     root.error = null;
     self.txs = $q.defer();
     self.assets = $q.defer();
+    self.isAvailable = false;
   });
-
+  
   var _setOngoingProcess = function(name) {
     $rootScope.$emit('Addon/OngoingProcess', name);
     root.onGoingProcess = name;
   };
-
+  
   var disableBalanceListener = $rootScope.$on('Local/BalanceUpdated', function (event, balance) {
     root.assets = null;
     root.assetsMap = null;
     root.error = null;
     self.txs = $q.defer();
     self.assets = $q.defer();
+    self.isAvailable = false;
     $rootScope.$emit('ColoredCoins/Error', null);
     var addresses = lodash.pluck(balance.byAddress, 'address');
     
+    $q.all([root.getAssets(), root.getColorTransactions()]).then(function(result) {
+      self.isAvailable = true;
+      lodash.values(self._queued).forEach(function(callback) {
+        $timeout(function() {
+          callback(result[0], result[1]);
+        }, 1);
+      });
+      self._queued = {};
+    });
+
     colu.getTransactions(addresses, function(err, body) {
       if (err) {
         self.txs.reject(err);
@@ -776,7 +792,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           map[tx.txid] = tx;
           return map;
         }, {});
-
+        root.txs = txMap;
         self.txs.resolve(txMap);
       }
     });
@@ -798,6 +814,16 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       _setOngoingProcess();
     });
   });
+  
+  root.whenAvailable = function(cb) {
+    if (self.isAvailable) {
+      $timeout(function() {
+        cb(root.assets, root.txs);
+      }, 1);
+    } else {
+      self._queued[cb] = cb;
+    }
+  };
 
   $rootScope.$on('$destroy', function() {
     disableBalanceListener();
@@ -1186,7 +1212,6 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       return cb(null, txp);
     });
   };
-
 
   return root;
 }
