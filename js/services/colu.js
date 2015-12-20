@@ -31,7 +31,8 @@ angular.module('copayAddon.coloredCoins').service('colu', function (profileServi
   
   var withLog = function(cb) {
     return function(err, body) {
-      $log.debug("Colu returned: " + JSON.stringify(body).substring(0, 1000) + "..");
+      var bodyStr = body ? JSON.stringify(body).substring(0, 1000) + ".." : body;
+      $log.debug("Colu returned: " + bodyStr);
       return cb(err, body);
     };
   };
