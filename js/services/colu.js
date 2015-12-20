@@ -28,6 +28,13 @@ angular.module('copayAddon.coloredCoins').service('colu', function (profileServi
     var network = profileService.focusedClient.credentials.network;
     colu[network].then(func);
   };
+  
+  var withLog = function(cb) {
+    return function(err, body) {
+      $log.debug("Colu returned: " + JSON.stringify(body).substring(0, 1000) + "..");
+      return cb(err, body);
+    };
+  };
 
   $rootScope.$on('ColoredCoins/BroadcastTxp', function(e, txp) {
     root.broadcastTx(txp.raw, txp.customData.financeTxId, function (err, body) {
@@ -79,6 +86,13 @@ angular.module('copayAddon.coloredCoins').service('colu', function (profileServi
         $log.debug("Colu returned tx: " + JSON.stringify(body));
         return cb(err, body);
       });
+    });
+  };
+  
+  root.getTransactions = function(addresses, cb) {
+    withColu(function(colu) {
+      $log.debug("Getting transactions for addresses via Colu..");
+      colu.getTransactionsForAddresses(addresses, withLog(cb));
     });
   };
 

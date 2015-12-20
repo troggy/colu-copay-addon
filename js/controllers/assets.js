@@ -4,7 +4,9 @@ angular.module('copayAddon.coloredCoins')
     .controller('assetsController', function ($rootScope, $scope, $timeout, $modal, isCordova, coloredCoins) {
       var self = this;
 
-      this.assets = coloredCoins.assets;
+      coloredCoins.getAssets().then(function(assets) {
+          self.assets = assets;
+      });
       this.error = coloredCoins.error;
 
       var disableAssetListener = $rootScope.$on('ColoredCoins/AssetsUpdated', function (event, assets) {

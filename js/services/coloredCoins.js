@@ -5,6 +5,10 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   var root = {},
       lockedUtxos = [],
       self = this;
+      
+      
+  self.txs = $q.defer(),
+  self.assets = $q.defer();
 
   // UTXOs "cache"
   root.txidToUTXO = {};
@@ -14,7 +18,10 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
 
   var disableFocusListener = $rootScope.$on('Local/NewFocusedWallet', function() {
     root.assets = null;
+    root.assetsMap = {};
     root.error = null;
+    self.txs = $q.defer();
+    self.assets = $q.defer();
   });
 
   var _setOngoingProcess = function(name) {
@@ -26,18 +33,35 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     root.assets = null;
     root.assetsMap = null;
     root.error = null;
+    self.txs = $q.defer();
+    self.assets = $q.defer();
     $rootScope.$emit('ColoredCoins/Error', null);
     var addresses = lodash.pluck(balance.byAddress, 'address');
+    
+    colu.getTransactions(addresses, function(err, body) {
+      if (err) {
+        self.txs.reject(err);
+      } else {
+        var txMap = lodash.reduce(body, function(map, tx) {
+          map[tx.txid] = tx;
+          return map;
+        }, {});
+
+        self.txs.resolve(txMap);
+      }
+    });
 
     _setOngoingProcess('Getting assets');
     _fetchAssets(addresses, function (err, assetsMap) {
       if (err) {
         var msg = err.error || err.message;
         root.error = msg;
+        root.assets.reject(msg);
         $rootScope.$emit('ColoredCoins/Error', msg);
         $log.error(msg);
       } else {
         root.assets = lodash.values(assetsMap);
+        self.assets.resolve(root.assets);
         root.assetsMap = assetsMap;
         $rootScope.$emit('ColoredCoins/AssetsUpdated', root.assets);
       }
@@ -108,10 +132,16 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     return icon ? icon.url : null;
   };
 
-  root.init = function() {};
+  root.getColorTransactions = function() {
+    return self.txs.promise;
+  };
+  
+  root.getAssets = function() {
+    return self.assets.promise;
+  };
 
   root.getColoredUtxos = function() {
-    return lodash.map(root.assets, function(asset) { return asset.utxo.txid + ":" + asset.utxo.index; });
+    return lodash.map(lodash.flatten(lodash.pluck(root.assets, 'utxos')), function(utxo) { return utxo.txid + ":" + utxo.index; });
   };
 
   var _fetchAssets = function(addresses, cb) {
@@ -127,6 +157,9 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           });
       
       $q.all(assetPromises).then(function() {
+        lodash.each(lodash.values(assetsMap), function(asset) {
+            asset.balanceStr = root.formatAssetAmount(asset.amount, asset);
+        });
         cb(null, assetsMap);
       }, function(err) {
         cb(err);
@@ -365,7 +398,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           assetId: asset.assetId,
           assetName: asset.metadata.assetName,
           icon: asset.icon,
-          amount: amount
+          amount: amount,
+          balanceStr: root.formatAssetAmount(amount, asset)
         },
         financeTxId: result.financeTxid
       };
@@ -412,7 +446,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       payProUrl: null,
       feePerKb: 43978,
       fee: 5000,
-      customData: customData
+      customData: customData,
+      utxosToExclude: root.getColoredUtxos()
     }, function (err, txp) {
       if (err) {
         return cb(err);
