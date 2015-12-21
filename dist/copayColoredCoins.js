@@ -85,12 +85,12 @@ angular.module('copayAddon.coloredCoins').config(function ($stateProvider) {
 
   $stateProvider.decorator('views', function (state, parent) {
     var views = parent(state);
-
+    return views;
     // replace both default 'splash' and 'disclaimer' states with a single one
     if (state.name == 'splash' || state.name == 'disclaimer') {
       views['main@'].templateUrl = 'colored-coins/views/landing.html';
-      views['main@'].controller = function($scope, $timeout, $log, profileService, storageService, applicationService) {
-        storageService.getCopayDisclaimerFlag(function(err, val) {
+      views['main@'].controller = function($scope, $timeout, $log, profileService, applicationService) {
+        profileService.isDisclaimerAccepted(function(val) {
           $scope.agreed = val;
           $timeout(function() {
             $scope.$digest();
@@ -102,7 +102,7 @@ angular.module('copayAddon.coloredCoins').config(function ($stateProvider) {
         };
 
         $scope.agreeAndCreate = function(noWallet) {
-          storageService.setCopayDisclaimerFlag(function(err) {
+          profileService.setDisclaimerAccepted(function(err) {
 
             if (profileService.profile) {
               $timeout(function() {
