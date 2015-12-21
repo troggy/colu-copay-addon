@@ -45,6 +45,7 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
         $scope.isAssetWallet = walletAsset.isAsset;
         if ($scope.isAssetWallet) {
           $scope.availableBalanceStr = walletAsset.availableBalanceStr;
+          $scope.showLockedBalance = !!walletAsset.lockedAmount;
           $scope.lockedBalanceStr = walletAsset.lockedBalanceStr;
           $scope.coloredBalanceStr = null;
         } else {
@@ -53,6 +54,7 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
             return total;
           }, 0);
 
+          $scope.showLockedBalance = !!$scope.index.lockedBalanceSat;
           $scope.lockedBalanceStr = $scope.index.lockedBalanceSat;
           var availableBalanceSat = $scope.index.availableBalanceSat - coloredBalanceSat;
           $scope.availableBalanceStr = profileService.formatAmount(availableBalanceSat) + ' ' + config.unitName;
@@ -1570,7 +1572,7 @@ angular.module("colored-coins/views/includes/available-balance.html", []).run(["
     "                <span translate>Available Balance</span>:\n" +
     "                {{ availableBalanceStr }}\n" +
     "              </span>\n" +
-    "              <span class=\"db text-gray\" ng-show=\"lockedBalanceStr\">\n" +
+    "              <span class=\"db text-gray\" ng-show=\"showLockedBalance\">\n" +
     "                {{ lockedBalanceStr }}\n" +
     "                <span translate>locked by pending payments</span>\n" +
     "              </span>\n" +
