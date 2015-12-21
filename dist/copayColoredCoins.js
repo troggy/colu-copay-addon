@@ -44,8 +44,8 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
       function setData(assets, walletAsset) {
         $scope.isAssetWallet = walletAsset.isAsset;
         if ($scope.isAssetWallet) {
-          $scope.availableBalanceStr = walletAsset.asset.availableBalanceStr;
-          $scope.lockedBalanceStr = walletAsset.asset.lockedBalanceStr;
+          $scope.availableBalanceStr = walletAsset.availableBalanceStr;
+          $scope.lockedBalanceStr = walletAsset.lockedBalanceStr;
           $scope.coloredBalanceStr = null;
         } else {
           var coloredBalanceSat = lodash.reduce(assets, function(total, asset) {
@@ -61,7 +61,7 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
       }
 
       coloredCoins.getAssets().then(function(assets) { 
-        setData(assets, walletAsset);
+        setData(assets, $scope.index.asset);
       });
 
       $rootScope.$on('Local/WalletAssetUpdated', function(event, walletAsset) {
@@ -788,18 +788,20 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       self._queued = {};
     });
 
-    colu.getTransactions(addresses, function(err, body) {
-      if (err) {
-        self.txs.reject(err);
-      } else {
-        var txMap = lodash.reduce(body, function(map, tx) {
-          map[tx.txid] = tx;
-          return map;
-        }, {});
-        root.txs = txMap;
-        self.txs.resolve(txMap);
-      }
-    });
+    if (addresses.length) {
+      colu.getTransactions(addresses, function(err, body) {
+        if (err) {
+          self.txs.reject(err);
+        } else {
+          var txMap = lodash.reduce(body, function(map, tx) {
+            map[tx.txid] = tx;
+            return map;
+          }, {});
+          root.txs = txMap;
+          self.txs.resolve(txMap);
+        }
+      });
+    }
 
     _setOngoingProcess('Getting assets');
     _fetchAssets(addresses, function (err, assetsMap) {
@@ -918,6 +920,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       
       $q.all(assetPromises).then(function() {
         lodash.each(lodash.values(assetsMap), function(asset) {
+            asset.unitSymbol = root.getAssetSymbol(asset.assetId, asset);
             asset.balanceStr = root.formatAssetAmount(asset.amount, asset);
             asset.lockedBalanceStr = root.formatAssetAmount(asset.lockedAmount, asset);
             asset.availableBalance = asset.amount - asset.lockedAmount;
@@ -1119,7 +1122,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
 
   root.formatAssetAmount = function(amount, asset, unitSymbol) {
-
+    asset = asset || {};
+    
     function formatAssetValue(value, decimalPlaces) {
       if (!value) {
         return '0';
