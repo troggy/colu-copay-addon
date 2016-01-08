@@ -27,7 +27,7 @@
         <div class="size-14 m20t">
           <span class="db text-bold">
             <span translate>Quantity</span>:
-            {{ asset.asset.amount }}
+            {{ asset.amount }}
           </span>
         </div>
     </div>
@@ -83,7 +83,7 @@
                             <div class="input">
                                 <input type="number" id="amount" ng-disabled="home.blockUx || home.lockAmount" name="amount"
                                        ng-attr-placeholder="{{'Amount'|translate}}"
-                                       ng-model="transfer._amount" min="1" max="{{ asset.asset.amount }}" ng-pattern="/^\d*$/" required autocomplete="off"
+                                       ng-model="transfer._amount" min="1" max="{{ asset.amount }}" ng-pattern="/^\d*$/" required autocomplete="off"
                                        ng-focus="home.formFocus('amount')" ng-blur="home.formFocus(false)">
                                 <a class="postfix" translate>units</a>
                             </div>

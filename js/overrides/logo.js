@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('copayAddon.coloredCoins').config(function ($provide) {
+angular.module('copayAddon.colu').config(function ($provide) {
 
   $provide.decorator('logoDirective', function($delegate) {
     var directive = $delegate[0];

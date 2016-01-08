@@ -1,20 +1,19 @@
 {
-  "name": "colored-coins-copay-addon",
-  "version": "1.2.1",
-  "description": "Colored Coins support for Copay wallet",
-  "main": "js/copayColoredCoins.js",
+  "name": "colu-copay-addon",
+  "version": "0.1.0",
+  "description": "Colu support for Copay wallet",
+  "main": "js/coluCopayAddon.js",
   "scripts": {
-    "start": "node server/apiProxy.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Colored-Coins/Colored-coins-add-on-for-Copay.git"
+    "url": "git://github.com/troggy/colu-copay-addon.git"
   },
-  "homepage": "http://coloredcoins.org/colored-coins-copay-addon/",
+  "homepage": "https://github.com/troggy/colu-copay-addon",
   "author": "Kosta Korenkov <7r0ggy@gmail.com>",
   "bugs": {
-    "url": "https://github.com/Colored-Coins/Colored-coins-add-on-for-Copay/issues"
+    "url": "https://https://github.com/troggy/colu-copay-addon/issues"
   },
   "ignore": [
     "**/.*",
@@ -25,8 +24,8 @@
   ],
   "dependencies": {
     "aws-sdk": "^2.1.44",
-    "formidable": "^1.0.17",
-    "http-proxy": "~1.11.1"
+    "colu": "^0.8.7",
+    "formidable": "^1.0.17"
   },
   "devDependencies": {
     "grunt": "^0.4.5",

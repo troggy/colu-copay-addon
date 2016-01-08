@@ -13,23 +13,25 @@ module.exports = function (grunt) {
       },
       dist: {
         src: [
-          './js/copayColoredCoins.js',
+          './js/coluCopayAddon.js',
           './js/overrides/*.js',
           './js/controllers/*.js',
           './js/filters/*.js',
           './js/services/*.js',
+          './js/models/*.js',
           './js/directives/*.js',
           './dist/templates.js',
-          './bower_components/ng-file-upload/ng-file-upload.js'
+          './bower_components/ng-file-upload/ng-file-upload.js',
+          'node_modules/colu/client/colu.client.js'
         ],
-        dest: './dist/copayColoredCoins.js'
+        dest: './dist/coluCopayAddon.js'
       }
     },
     html2js: {
       app: {
         options: {
           rename: function(moduleName) {
-            return 'colored-coins/' + moduleName.replace('../', '');
+            return 'colu-copay-addon/' + moduleName.replace('../', '');
           }
         },
         src: ['./views/{,*/}*.html'],
