@@ -31,8 +31,9 @@ angular.module('copayAddon.coloredCoins').service('colu', function (profileServi
   
   var withLog = function(cb) {
     return function(err, body) {
-      var bodyStr = body ? JSON.stringify(body).substring(0, 1000) + ".." : body;
-      $log.debug("Colu returned: " + bodyStr);
+      var errStr = err ? JSON.stringify(err) : err;
+      var bodyStr = body ? JSON.stringify(body).substring(0, 3000) + ".." : body;
+      $log.debug("Colu returned: [" + errStr + "] " + bodyStr);
       return cb(err, body);
     };
   };
@@ -53,29 +54,26 @@ angular.module('copayAddon.coloredCoins').service('colu', function (profileServi
         last_txid: lastTxId,
         tx_hex: signedTxHex
       }));
-      colu.transmit(signedTxHex, lastTxId, cb);
+      colu.transmit(signedTxHex, lastTxId, withLog(cb));
     });
   };
 
   root.getAssetMetadata = function(asset, cb) {
     withColu(function(colu) {
-      colu.coloredCoins.getAssetMetadata(asset.assetId, asset.utxo.txid + ":" + asset.utxo.index, cb);
+      colu.coloredCoins.getAssetMetadata(asset.assetId, asset.utxo.txid + ":" + asset.utxo.index, withLog(cb));
     });
   };
 
   root.getAddressInfo = function(address, cb) {
     withColu(function(colu) {
-      colu.coloredCoins.getAddressInfo(address, cb);
+      colu.coloredCoins.getAddressInfo(address, withLog(cb));
     });
   };
 
   root.issueAsset = function(args, cb) {
     withColu(function(colu) {
       $log.debug("Issuing asset via Colu: " + JSON.stringify(args));
-      colu.issueAsset(args, function(err, body) {
-        $log.debug("Colu returned tx: " + JSON.stringify(body));
-        return cb(err, body);
-      });
+      colu.issueAsset(args, withLog(cb));
     });
 
   };
@@ -83,10 +81,7 @@ angular.module('copayAddon.coloredCoins').service('colu', function (profileServi
   root.createTx = function(fromAddress, type, args, cb) {
     withColu(function(colu) {
       $log.debug("Creating " + type + " asset tx via Colu: " + JSON.stringify(args));
-      colu.buildTransaction(fromAddress, type, args, function(err, body) {
-        $log.debug("Colu returned tx: " + JSON.stringify(body));
-        return cb(err, body);
-      });
+      colu.buildTransaction(fromAddress, type, args, withLog(cb));
     });
   };
   
