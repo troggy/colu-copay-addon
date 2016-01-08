@@ -13,7 +13,7 @@ module.exports = function (grunt) {
       },
       dist: {
         src: [
-          './js/copayColoredCoins.js',
+          './js/coluCopayAddon.js',
           './js/overrides/*.js',
           './js/controllers/*.js',
           './js/filters/*.js',
