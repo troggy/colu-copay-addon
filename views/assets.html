@@ -46,7 +46,7 @@
         </div>
     </div>
 
-    <div class="topbar-container" ng-include="'colored-coins/views/includes/topbar.html'"></div>
+    <div class="topbar-container" ng-include="'colu-copay-addon/views/includes/topbar.html'"></div>
     <div class="cc-assets-list-view">
         <div class="cc-assets-list" ng-show="assets.assets && !$root.updatingBalance">
             <div ng-repeat="asset in assets.assets | orderBy:['assetName', 'utxo.txid']" ng-click="assets.openAssetModal(asset)"

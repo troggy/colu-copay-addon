@@ -1,18 +1,19 @@
 {
-  "name": "colored-coins-copay-addon",
-  "version": "1.2.1",
-  "homepage": "http://coloredcoins.org/colored-coins-copay-addon/",
+  "name": "colu-copay-addon",
+  "version": "0.1.0",
+  "homepage": "https://github.com/troggy/colu-copay-addon",
   "authors": [
     "Kosta Korenkov <7r0ggy@gmail.com>"
   ],
-  "description": "Colored Coins support for Copay wallet",
+  "description": "Colu support for Copay wallet",
   "repository": {
     "type": "git",
-    "url": "git://github.com/Colored-Coins/Colored-coins-add-on-for-Copay.git"
+    "url": "git://github.com/troggy/colu-copay-addon.git"
   },
   "keywords": [
     "copay",
     "wallet",
+    "colu",
     "coloredcoins",
     "assets"
   ],

@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('copayAddon.coloredCoins')
+angular.module('copayAddon.colu')
     .directive('booleanIcon', function() {
       return {
         restrict: 'E',

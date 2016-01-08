@@ -1,7 +1,7 @@
 'use strict';
 
 
-angular.module('copayAddon.coloredCoins').service('colu', function (profileService, $rootScope, feeService, $log, $q) {
+angular.module('copayAddon.colu').service('colu', function (profileService, $rootScope, feeService, $log, $q) {
 
   var root = {},
       COLU_API_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiI3cjBnZ3lAZ21haWwuY29tIiwiZXhwIjoiMjAxNS0xMS0wOVQwMTozMToxMC45MzNaIiwidHlwZSI6ImFwaV9rZXkifQ.VnT2HH2rl1DBJQ3rwZRjh1vPhNoNjesYfAg07yq0OU8';

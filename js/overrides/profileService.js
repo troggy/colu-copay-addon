@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('copayAddon.coloredCoins').config(function ($provide) {
+angular.module('copayAddon.colu').config(function ($provide) {
 
   $provide.decorator('profileService', function ($delegate, $rootScope) {
     var defaultSetWalletClient = $delegate.setWalletClient;

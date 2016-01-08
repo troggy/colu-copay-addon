@@ -1,7 +1,7 @@
 'use strict';
 
 
-angular.module('copayAddon.coloredCoins').factory('insight', function ($http, profileService) {
+angular.module('copayAddon.colu').factory('insight', function ($http, profileService) {
 
   function Insight(opts) {
     this.network = opts.network || 'livenet';

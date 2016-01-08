@@ -496,4 +496,4 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
 }
 
 
-angular.module('copayAddon.coloredCoins').service('coloredCoins', ColoredCoins);
+angular.module('copayAddon.colu').service('coloredCoins', ColoredCoins);

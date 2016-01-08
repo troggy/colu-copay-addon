@@ -1,5 +1,5 @@
 
-var module = angular.module('copayAddon.coloredCoins', ['copayAssetViewTemplates', 'ngFileUpload']);
+var module = angular.module('copayAddon.colu', ['copayAssetViewTemplates', 'ngFileUpload']);
 
 module
     .config(function ($stateProvider) {
@@ -10,7 +10,7 @@ module
             needProfile: true,
             views: {
               'main': {
-                templateUrl: 'colored-coins/views/assets.html'
+                templateUrl: 'colu-copay-addon/views/assets.html'
               }
             },
             onEnter: function($rootScope){

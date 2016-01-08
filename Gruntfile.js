@@ -24,14 +24,14 @@ module.exports = function (grunt) {
           './bower_components/ng-file-upload/ng-file-upload.js',
           'node_modules/colu/client/colu.client.js'
         ],
-        dest: './dist/copayColoredCoins.js'
+        dest: './dist/coluCopayAddon.js'
       }
     },
     html2js: {
       app: {
         options: {
           rename: function(moduleName) {
-            return 'colored-coins/' + moduleName.replace('../', '');
+            return 'colu-copay-addon/' + moduleName.replace('../', '');
           }
         },
         src: ['./views/{,*/}*.html'],

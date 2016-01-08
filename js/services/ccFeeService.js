@@ -1,7 +1,7 @@
 'use strict';
 
 
-angular.module('copayAddon.coloredCoins')
+angular.module('copayAddon.colu')
     .service('ccFeeService', function (profileService, feeService, $log) {
       var SATOSHIS_FOR_ISSUANCE_COLORING = 1300,
           SATOSHIS_FOR_TRANSFER_COLORING = 600,

@@ -1,5 +1,5 @@
 
-var module = angular.module('copayAddon.coloredCoins', ['copayAssetViewTemplates', 'ngFileUpload']);
+var module = angular.module('copayAddon.colu', ['copayAssetViewTemplates', 'ngFileUpload']);
 
 module
     .config(function ($stateProvider) {
@@ -10,7 +10,7 @@ module
             needProfile: true,
             views: {
               'main': {
-                templateUrl: 'colored-coins/views/assets.html'
+                templateUrl: 'colu-copay-addon/views/assets.html'
               }
             },
             onEnter: function($rootScope){
@@ -35,7 +35,7 @@ module
     });
 'use strict';
 
-angular.module('copayAddon.coloredCoins').config(function ($provide) {
+angular.module('copayAddon.colu').config(function ($provide) {
   $provide.decorator('availableBalanceDirective', function($delegate) {
     var directive = $delegate[0];
     directive.controller = function($rootScope, $scope, profileService, configService, coloredCoins, lodash) {
@@ -70,7 +70,7 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
         setData(coloredCoins.assets, walletAsset);
       });
     };
-    directive.templateUrl = 'colored-coins/views/includes/available-balance.html';
+    directive.templateUrl = 'colu-copay-addon/views/includes/available-balance.html';
     return $delegate;
   });
 
@@ -81,14 +81,14 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
   Replace Copay's splash and disclaimer screens with single landing page
  */
 
-angular.module('copayAddon.coloredCoins').config(function ($stateProvider) {
+angular.module('copayAddon.colu').config(function ($stateProvider) {
 
   $stateProvider.decorator('views', function (state, parent) {
     var views = parent(state);
     return views;
     // replace both default 'splash' and 'disclaimer' states with a single one
     if (state.name == 'splash' || state.name == 'disclaimer') {
-      views['main@'].templateUrl = 'colored-coins/views/landing.html';
+      views['main@'].templateUrl = 'colu-copay-addon/views/landing.html';
       views['main@'].controller = function($scope, $timeout, $log, profileService, applicationService) {
         profileService.isDisclaimerAccepted(function(val) {
           $scope.agreed = val;
@@ -139,7 +139,7 @@ angular.module('copayAddon.coloredCoins').config(function ($stateProvider) {
 });
 'use strict';
 
-angular.module('copayAddon.coloredCoins').config(function ($provide) {
+angular.module('copayAddon.colu').config(function ($provide) {
 
   $provide.decorator('logoDirective', function($delegate) {
     var directive = $delegate[0];
@@ -174,7 +174,7 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
 });
 'use strict';
 
-angular.module('copayAddon.coloredCoins').config(function ($provide) {
+angular.module('copayAddon.colu').config(function ($provide) {
 
   $provide.decorator('profileService', function ($delegate, $rootScope) {
     var defaultSetWalletClient = $delegate.setWalletClient;
@@ -209,15 +209,15 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
 });
 'use strict';
 
-angular.module('copayAddon.coloredCoins').config(function ($provide) {
+angular.module('copayAddon.colu').config(function ($provide) {
 
   $provide.decorator('txStatus', function($delegate) {
     var defaultTemplateUrl = $delegate._templateUrl;
     $delegate._templateUrl = function(type, txp) {
       if (txp.customData && txp.customData.asset) {
         return txp.customData.asset.action == 'transfer'
-            ? 'colored-coins/views/modals/transfer-status.html'
-            : 'colored-coins/views/modals/issue-status.html';
+            ? 'colu-copay-addon/views/modals/transfer-status.html'
+            : 'colu-copay-addon/views/modals/issue-status.html';
       }
       return defaultTemplateUrl(type, txp);
     };
@@ -226,7 +226,7 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
 });
 'use strict';
 
-angular.module('copayAddon.coloredCoins')
+angular.module('copayAddon.colu')
     .controller('assetsController', function ($rootScope, $scope, $timeout, $modal, isCordova, coloredCoins) {
       var self = this;
 
@@ -669,7 +669,7 @@ AssetTransferController.prototype = Object.create(ProcessingTxController.prototy
 'use strict';
 
 
-angular.module('copayAddon.coloredCoins')
+angular.module('copayAddon.colu')
     .service('ccFeeService', function (profileService, feeService, $log) {
       var SATOSHIS_FOR_ISSUANCE_COLORING = 1300,
           SATOSHIS_FOR_TRANSFER_COLORING = 600,
@@ -1233,12 +1233,12 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
 }
 
 
-angular.module('copayAddon.coloredCoins').service('coloredCoins', ColoredCoins);
+angular.module('copayAddon.colu').service('coloredCoins', ColoredCoins);
 
 'use strict';
 
 
-angular.module('copayAddon.coloredCoins').service('colu', function (profileService, $rootScope, feeService, $log, $q) {
+angular.module('copayAddon.colu').service('colu', function (profileService, $rootScope, feeService, $log, $q) {
 
   var root = {},
       COLU_API_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiI3cjBnZ3lAZ21haWwuY29tIiwiZXhwIjoiMjAxNS0xMS0wOVQwMTozMToxMC45MzNaIiwidHlwZSI6ImFwaV9rZXkifQ.VnT2HH2rl1DBJQ3rwZRjh1vPhNoNjesYfAg07yq0OU8';
@@ -1336,7 +1336,7 @@ angular.module('copayAddon.coloredCoins').service('colu', function (profileServi
 'use strict';
 
 
-angular.module('copayAddon.coloredCoins').factory('insight', function ($http, profileService) {
+angular.module('copayAddon.colu').factory('insight', function ($http, profileService) {
 
   function Insight(opts) {
     this.network = opts.network || 'livenet';
@@ -1394,7 +1394,7 @@ UnitSymbol.prototype.forAmount = function(amount) {
 };
 'use strict';
 
-angular.module('copayAddon.coloredCoins')
+angular.module('copayAddon.colu')
     .directive('booleanIcon', function() {
       return {
         restrict: 'E',
@@ -1409,10 +1409,10 @@ angular.module('copayAddon.coloredCoins')
       }
     });
 
-angular.module('copayAssetViewTemplates', ['colored-coins/views/assets.html', 'colored-coins/views/includes/asset-status.html', 'colored-coins/views/includes/available-balance.html', 'colored-coins/views/includes/topbar.html', 'colored-coins/views/landing.html', 'colored-coins/views/modals/asset-details.html', 'colored-coins/views/modals/issue-status.html', 'colored-coins/views/modals/issue.html', 'colored-coins/views/modals/send.html', 'colored-coins/views/modals/transfer-status.html']);
+angular.module('copayAssetViewTemplates', ['colu-copay-addon/views/assets.html', 'colu-copay-addon/views/includes/asset-status.html', 'colu-copay-addon/views/includes/available-balance.html', 'colu-copay-addon/views/includes/topbar.html', 'colu-copay-addon/views/landing.html', 'colu-copay-addon/views/modals/asset-details.html', 'colu-copay-addon/views/modals/issue-status.html', 'colu-copay-addon/views/modals/issue.html', 'colu-copay-addon/views/modals/send.html', 'colu-copay-addon/views/modals/transfer-status.html']);
 
-angular.module("colored-coins/views/assets.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("colored-coins/views/assets.html",
+angular.module("colu-copay-addon/views/assets.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("colu-copay-addon/views/assets.html",
     "<div class=\"cc-assets-view\" ng-controller=\"assetsController as assets\">\n" +
     "    <div class=\"onGoingProcess\" ng-show=\"index.isOffline\">\n" +
     "        <div class=\"onGoingProcess-content\" ng-style=\"{'background-color':'#222'}\">\n" +
@@ -1461,7 +1461,7 @@ angular.module("colored-coins/views/assets.html", []).run(["$templateCache", fun
     "        </div>\n" +
     "    </div>\n" +
     "\n" +
-    "    <div class=\"topbar-container\" ng-include=\"'colored-coins/views/includes/topbar.html'\"></div>\n" +
+    "    <div class=\"topbar-container\" ng-include=\"'colu-copay-addon/views/includes/topbar.html'\"></div>\n" +
     "    <div class=\"cc-assets-list-view\">\n" +
     "        <div class=\"cc-assets-list\" ng-show=\"assets.assets && !$root.updatingBalance\">\n" +
     "            <div ng-repeat=\"asset in assets.assets | orderBy:['assetName', 'utxo.txid']\" ng-click=\"assets.openAssetModal(asset)\"\n" +
@@ -1509,8 +1509,8 @@ angular.module("colored-coins/views/assets.html", []).run(["$templateCache", fun
     "");
 }]);
 
-angular.module("colored-coins/views/includes/asset-status.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("colored-coins/views/includes/asset-status.html",
+angular.module("colu-copay-addon/views/includes/asset-status.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("colu-copay-addon/views/includes/asset-status.html",
     "<div ng-if=\"type == 'broadcasted'\" class=\"popup-txsent\">\n" +
     "    <i class=\"small-centered columns fi-check m20tp\"></i>\n" +
     "    <div class=\"text-center size-18 text-white text-bold tu p20\">\n" +
@@ -1556,8 +1556,8 @@ angular.module("colored-coins/views/includes/asset-status.html", []).run(["$temp
     "");
 }]);
 
-angular.module("colored-coins/views/includes/available-balance.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("colored-coins/views/includes/available-balance.html",
+angular.module("colu-copay-addon/views/includes/available-balance.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("colu-copay-addon/views/includes/available-balance.html",
     "<div>\n" +
     "    <div class=\"left\" ng-show=\"index.lockedBalanceSat\">\n" +
     "        <i class=\"fi-info size-24 m10r\"></i>\n" +
@@ -1580,8 +1580,8 @@ angular.module("colored-coins/views/includes/available-balance.html", []).run(["
     "");
 }]);
 
-angular.module("colored-coins/views/includes/topbar.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("colored-coins/views/includes/topbar.html",
+angular.module("colu-copay-addon/views/includes/topbar.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("colu-copay-addon/views/includes/topbar.html",
     "<nav class=\"tab-bar\">\n" +
     "    <section class=\"left-small\">\n" +
     "        <a id=\"hamburger\" class=\"p10\" ng-show=\"!goBackToState && !closeToHome  && !index.noFocusedWallet\"\n" +
@@ -1614,12 +1614,12 @@ angular.module("colored-coins/views/includes/topbar.html", []).run(["$templateCa
     "");
 }]);
 
-angular.module("colored-coins/views/landing.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("colored-coins/views/landing.html",
+angular.module("colu-copay-addon/views/landing.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("colu-copay-addon/views/landing.html",
     "<div\n" +
     "        ng-if=\"agreed && index.hasProfile\"\n" +
     "        class=\"topbar-container\"\n" +
-    "        ng-include=\"'colored-coins/views/includes/topbar.html'\"\n" +
+    "        ng-include=\"'colu-copay-addon/views/includes/topbar.html'\"\n" +
     "        ng-init=\"titleSection='Terms of Use';  goBackToState = 'about'; noColor = true; noControls = true\">\n" +
     "</div>\n" +
     "\n" +
@@ -1678,8 +1678,8 @@ angular.module("colored-coins/views/landing.html", []).run(["$templateCache", fu
     "");
 }]);
 
-angular.module("colored-coins/views/modals/asset-details.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("colored-coins/views/modals/asset-details.html",
+angular.module("colu-copay-addon/views/modals/asset-details.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("colu-copay-addon/views/modals/asset-details.html",
     "<nav class=\"tab-bar\">\n" +
     "    <section class=\"left-small\">\n" +
     "        <a ng-click=\"cancel()\">\n" +
@@ -1830,19 +1830,19 @@ angular.module("colored-coins/views/modals/asset-details.html", []).run(["$templ
     "</div>");
 }]);
 
-angular.module("colored-coins/views/modals/issue-status.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("colored-coins/views/modals/issue-status.html",
+angular.module("colu-copay-addon/views/modals/issue-status.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("colu-copay-addon/views/modals/issue-status.html",
     "{{ status = {\n" +
     "    created: 'Asset Issuance Proposal Created',\n" +
     "    broadcasted: 'Asset Issued',\n" +
     "    accepted: 'Asset Issuance Accepted',\n" +
     "    rejected: 'Asset Issuance Rejected'\n" +
     "   };\"\" }}\n" +
-    "<div ng-include=\"'colored-coins/views/includes/asset-status.html'\"></div>");
+    "<div ng-include=\"'colu-copay-addon/views/includes/asset-status.html'\"></div>");
 }]);
 
-angular.module("colored-coins/views/modals/issue.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("colored-coins/views/modals/issue.html",
+angular.module("colu-copay-addon/views/modals/issue.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("colu-copay-addon/views/modals/issue.html",
     "<nav class=\"tab-bar\">\n" +
     "    <section class=\"left-small\">\n" +
     "        <a ng-click=\"cancel()\">\n" +
@@ -1995,8 +1995,8 @@ angular.module("colored-coins/views/modals/issue.html", []).run(["$templateCache
     "</div> <!-- END Send -->");
 }]);
 
-angular.module("colored-coins/views/modals/send.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("colored-coins/views/modals/send.html",
+angular.module("colu-copay-addon/views/modals/send.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("colu-copay-addon/views/modals/send.html",
     "<nav class=\"tab-bar\">\n" +
     "    <section class=\"left-small\">\n" +
     "        <a ng-click=\"cancel()\">\n" +
@@ -2111,15 +2111,15 @@ angular.module("colored-coins/views/modals/send.html", []).run(["$templateCache"
     "</div> <!-- END Send -->");
 }]);
 
-angular.module("colored-coins/views/modals/transfer-status.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("colored-coins/views/modals/transfer-status.html",
+angular.module("colu-copay-addon/views/modals/transfer-status.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("colu-copay-addon/views/modals/transfer-status.html",
     "{{ status = {\n" +
     "    created: 'Asset Transfer Proposal Created',\n" +
     "    broadcasted: 'Asset Transferred',\n" +
     "    accepted: 'Asset Transfer Accepted',\n" +
     "    rejected: 'Asset Transfer Rejected'\n" +
     "   };\"\" }}\n" +
-    "<div ng-include=\"'colored-coins/views/includes/asset-status.html'\"></div>");
+    "<div ng-include=\"'colu-copay-addon/views/includes/asset-status.html'\"></div>");
 }]);
 
 /**!

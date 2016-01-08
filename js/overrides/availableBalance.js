@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('copayAddon.coloredCoins').config(function ($provide) {
+angular.module('copayAddon.colu').config(function ($provide) {
   $provide.decorator('availableBalanceDirective', function($delegate) {
     var directive = $delegate[0];
     directive.controller = function($rootScope, $scope, profileService, configService, coloredCoins, lodash) {
@@ -35,7 +35,7 @@ angular.module('copayAddon.coloredCoins').config(function ($provide) {
         setData(coloredCoins.assets, walletAsset);
       });
     };
-    directive.templateUrl = 'colored-coins/views/includes/available-balance.html';
+    directive.templateUrl = 'colu-copay-addon/views/includes/available-balance.html';
     return $delegate;
   });
 
