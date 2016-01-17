@@ -106,7 +106,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     if (!addressInfo.utxos || addressInfo.utxos.length == 0) return assets;
 
     addressInfo.utxos.forEach(function(utxo) {
-      if (utxo.assets || utxo.assets.length > 0) {
+      if (utxo.assets && utxo.assets.length > 0) {
         var utxoToKeep = lodash.pick(utxo, [ 'txid', 'index', 'value', 'scriptPubKey'])
         var utxoAssets = lodash
           .chain(utxo.assets)

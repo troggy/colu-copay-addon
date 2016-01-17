@@ -1,6 +1,6 @@
 {
   "name": "colu-copay-addon",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Colu support for Copay wallet",
   "main": "js/coluCopayAddon.js",
   "scripts": {
@@ -13,7 +13,7 @@
   "homepage": "https://github.com/troggy/colu-copay-addon",
   "author": "Kosta Korenkov <7r0ggy@gmail.com>",
   "bugs": {
-    "url": "https://https://github.com/troggy/colu-copay-addon/issues"
+    "url": "https://github.com/troggy/colu-copay-addon/issues"
   },
   "ignore": [
     "**/.*",
@@ -24,7 +24,7 @@
   ],
   "dependencies": {
     "aws-sdk": "^2.1.44",
-    "colu": "^0.8.7",
+    "colu": "^0.9.20",
     "formidable": "^1.0.17"
   },
   "devDependencies": {

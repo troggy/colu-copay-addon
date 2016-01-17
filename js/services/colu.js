@@ -88,7 +88,7 @@ angular.module('copayAddon.colu').service('colu', function (profileService, $roo
   root.getTransactions = function(addresses, cb) {
     withColu(function(colu) {
       $log.debug("Getting transactions for addresses via Colu..");
-      colu.getTransactionsForAddresses(addresses, withLog(cb));
+      colu.getTransactions(addresses, withLog(cb));
     });
   };
 
