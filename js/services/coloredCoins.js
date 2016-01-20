@@ -328,7 +328,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       }
     };
 
-    colu.createTx(utxos.addresses[0], 'send', transfer, cb);
+    colu.createTx('send', transfer, cb);
   };
 
   root.createIssueTx = function(issuance, cb) {

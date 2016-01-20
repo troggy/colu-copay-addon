@@ -1065,7 +1065,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       }
     };
 
-    colu.createTx(utxos.addresses[0], 'send', transfer, cb);
+    colu.createTx('send', transfer, cb);
   };
 
   root.createIssueTx = function(issuance, cb) {
@@ -1315,10 +1315,10 @@ angular.module('copayAddon.colu').service('colu', function (profileService, $roo
 
   };
 
-  root.createTx = function(fromAddress, type, args, cb) {
+  root.createTx = function(type, args, cb) {
     withColu(function(colu) {
       $log.debug("Creating " + type + " asset tx via Colu: " + JSON.stringify(args));
-      colu.buildTransaction(fromAddress, type, args, withLog(cb));
+      colu.buildTransaction(type, args, withLog(cb));
     });
   };
   
