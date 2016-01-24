@@ -414,20 +414,6 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
 
     var fc = profileService.focusedClient;
     
-    if (comment && !fc.credentials.sharedEncryptingKey) {
-      var msg = 'Could not add message to imported wallet without shared encrypting key';
-      $log.warn(msg);
-      return cb(msg);
-    }
-
-    if (fc.isPrivKeyEncrypted()) {
-      profileService.unlockFC(function (err) {
-        if (err) return cb(err);
-        return transferAsset(amount, toAddress, comment, asset, cb);
-      });
-      return;
-    }
-
     createTransferTx(asset, amount, toAddress, function (err, result) {
       if (err) { 
         return cb(err.error || err);
