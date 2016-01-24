@@ -37,7 +37,7 @@ var AssetTransferController = function ($rootScope, $scope, $modalInstance, $tim
       return;
     }
 
-    coloredCoins.sendTransferTxProposal(transfer._amount, transfer._address, $scope.asset, function(err, txp) {
+    coloredCoins.sendTransferTxProposal(transfer._amount, transfer._address, transfer._comment, $scope.asset, function(err, txp) {
       if (err) {
         self.setOngoingProcess();
         profileService.lockFC();

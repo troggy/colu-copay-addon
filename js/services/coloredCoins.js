@@ -409,14 +409,21 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + asset.unitSymbol.forAmount(amount);
   };
   
-  root.sendTransferTxProposal = function (amount, toAddress, asset, cb) {
+  root.sendTransferTxProposal = function (amount, toAddress, comment, asset, cb) {
     $log.debug("Transfering " + amount + " units(s) of asset " + asset.assetId + " to " + toAddress);
 
     var fc = profileService.focusedClient;
+    
+    if (comment && !fc.credentials.sharedEncryptingKey) {
+      var msg = 'Could not add message to imported wallet without shared encrypting key';
+      $log.warn(msg);
+      return cb(msg);
+    }
+
     if (fc.isPrivKeyEncrypted()) {
       profileService.unlockFC(function (err) {
         if (err) return cb(err);
-        return transferAsset(amount, toAddress, asset, cb);
+        return transferAsset(amount, toAddress, comment, asset, cb);
       });
       return;
     }
@@ -437,11 +444,11 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
         },
         financeTxId: result.financeTxid
       };
-      sendTxProposal(result.txHex, toAddress, customData, cb);
+      sendTxProposal(result.txHex, toAddress, comment, customData, cb);
     });
   };
 
-  var sendTxProposal = function (txHex, toAddress, customData, cb) {
+  var sendTxProposal = function (txHex, toAddress, comment, customData, cb) {
     var fc = profileService.focusedClient;
     var tx = new bitcore.Transaction(txHex);
     $log.debug(JSON.stringify(tx.toObject(), null, 2));
@@ -477,7 +484,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       inputs: inputs,
       outputs: outputs,
       noOutputsShuffle: true,
-      message: '',
+      message: comment,
       payProUrl: null,
       feePerKb: 43978,
       fee: 5000,
