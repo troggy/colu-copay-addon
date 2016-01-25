@@ -810,7 +810,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       if (err) {
         var msg = err.error || err.message;
         root.error = msg;
-        root.assets.reject(msg);
+        self.assets.reject(msg);
         $rootScope.$emit('ColoredCoins/Error', msg);
         $log.error(msg);
       } else {
