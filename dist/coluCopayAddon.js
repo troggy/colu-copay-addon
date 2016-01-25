@@ -187,10 +187,10 @@ angular.module('copayAddon.colu').config(function ($provide) {
 
       var defaultBroadcastTxProposal = client.broadcastTxProposal.bind(client);
 
-      client.broadcastTxProposal = function (txp, cb) {
+      client.broadcastTxProposal = function (txp, opts, cb) {
         if (txp.customData && txp.customData.financeTxId) {
           $rootScope.$on('ColoredCoins/Broadcast:success', function() {
-            defaultBroadcastTxProposal(txp, cb);
+            defaultBroadcastTxProposal(txp, opts, cb);
           });
           $rootScope.$on('ColoredCoins/Broadcast:error', function(e, err) {
             cb(err);
@@ -198,7 +198,7 @@ angular.module('copayAddon.colu').config(function ($provide) {
 
           $rootScope.$emit('ColoredCoins/BroadcastTxp', txp);
         } else {
-          defaultBroadcastTxProposal(txp, cb);
+          defaultBroadcastTxProposal(txp, opts, cb);
         }
       };
 
