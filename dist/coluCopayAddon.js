@@ -963,8 +963,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   
   var _filterSupportedAssets = function(assetsInfo) {
     var config = configService.getDefaults();
-    if (config.assets && config.assets.supported) {
-      var supportedAssets = lodash.pluck(config.assets.supported, 'assetId');
+    if (config.assets && config.supportedAssets) {
+      var supportedAssets = lodash.pluck(config.supportedAssets, 'assetId');
       assetsInfo = lodash.reject(assetsInfo, function(i) {
         return supportedAssets.indexOf(i.assetId) == -1;
       });
@@ -1109,7 +1109,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   
   var getSymbolFromConfig = function(assetId) {
     try {
-      return lodash.find(configService.getDefaults().assets.supported, function(a) {
+      return lodash.find(configService.getDefaults().supportedAssets, function(a) {
         return a.assetId === assetId;
       }).symbol;
     } catch (e) {
