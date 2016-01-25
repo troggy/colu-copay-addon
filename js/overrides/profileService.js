@@ -15,10 +15,15 @@ angular.module('copayAddon.colu').config(function ($provide) {
 
       client.broadcastTxProposal = function (txp, opts, cb) {
         if (txp.customData && txp.customData.financeTxId) {
-          $rootScope.$on('ColoredCoins/Broadcast:success', function() {
+          var disableSuccessListener, disableErrorListener;
+          disableSuccessListener = $rootScope.$on('ColoredCoins/Broadcast:success', function() {
+            disableSuccessListener();
+            disableErrorListener();
             defaultBroadcastTxProposal(txp, opts, cb);
           });
-          $rootScope.$on('ColoredCoins/Broadcast:error', function(e, err) {
+          disableErrorListener = $rootScope.$on('ColoredCoins/Broadcast:error', function(e, err) {
+            disableSuccessListener();
+            disableErrorListener();
             cb(err);
           });
 
