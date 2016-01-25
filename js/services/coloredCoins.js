@@ -71,7 +71,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     _setOngoingProcess('Getting assets');
     _fetchAssets(addresses, function (err, assetsMap) {
       if (err) {
-        var msg = err.error || err.message;
+        var msg = err.error || err.message || err.code;
         root.error = msg;
         self.assets.reject(msg);
         $rootScope.$emit('ColoredCoins/Error', msg);
