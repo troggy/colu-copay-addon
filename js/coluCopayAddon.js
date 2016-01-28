@@ -1,7 +1,7 @@
 
-var module = angular.module('copayAddon.colu', ['copayAssetViewTemplates', 'ngFileUpload']);
+var coluCopayModule = angular.module('copayAddon.colu', ['copayAssetViewTemplates', 'ngFileUpload']);
 
-module
+coluCopayModule
     .config(function ($stateProvider) {
       $stateProvider
           .state('assets', {
