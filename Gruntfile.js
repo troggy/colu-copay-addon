@@ -15,7 +15,10 @@ module.exports = function (grunt) {
         src: [
           './js/coluCopayAddon.js',
           './js/overrides/*.js',
-          './js/controllers/*.js',
+          './js/controllers/assets.js',
+          './js/controllers/processingTx.js',
+          './js/controllers/issue.js',
+          './js/controllers/transfer.js',
           './js/filters/*.js',
           './js/services/*.js',
           './js/models/*.js',
