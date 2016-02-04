@@ -24,7 +24,7 @@
   ],
   "dependencies": {
     "aws-sdk": "^2.1.44",
-    "colu": "^0.9.20",
+    "colu": "^0.10.4",
     "formidable": "^1.0.17"
   },
   "devDependencies": {

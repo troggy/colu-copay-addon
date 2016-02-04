@@ -271,24 +271,29 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       // then try to use smaller utxos to collect required amount (to reduce fragmentation)
       var totalAmount = 0,
           firstUsedIndex = -1,
-          addresses = [];
+          changeAddress,
+          selected = [];
       for (var i = utxos.length - 1; i >= 0; i--) {
         if (utxos[i].assetAmount > amount || utxos[i].isLocked) continue;
         if (firstUsedIndex < 0) { 
           firstUsedIndex = i;
         }
         totalAmount += utxos[i].assetAmount;
-        addresses.push(utxos[i].address);
+        selected.push(utxos[i].txid + ":" + utxos[i].index);
+        if (!changeAddress) {
+          changeAddress = utxos[i].address;
+        }
         if (totalAmount >= amount) {
-          return { addresses: addresses, amount: totalAmount };
+          return { utxos: selected, amount: totalAmount, changeAddress: changeAddress };
         }
       }
 
       // not enough smaller utxos, use the one bigger, if any
       if (firstUsedIndex < utxos.length - 1 && !utxos[firstUsedIndex + 1].isLocked) {
         return { 
-          addresses: [utxos[firstUsedIndex + 1].address], 
-          amount: utxos[firstUsedIndex + 1].assetAmount
+          utxos: [utxos[firstUsedIndex + 1].txid + ":" + utxos[firstUsedIndex + 1].index], 
+          amount: utxos[firstUsedIndex + 1].assetAmount,
+          changeAddress: utxos[firstUsedIndex + 1].address
         };
       }
       
@@ -306,22 +311,22 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       "assetId": asset.assetId
     }];
     
-    var utxos = _selectUtxos(asset.utxos, amount);
-    if (!utxos) {
+    var selectedUtxos = _selectUtxos(asset.utxos, amount);
+    if (!selectedUtxos) {
       return cb({ message: 'Not enough assets' });
     }
 
     // transfer the rest of asset back to our address
-    if (amount < utxos.amount) {
+    if (amount < selectedUtxos.amount) {
       to.push({
-        "address": utxos.addresses[0],
-        "amount": utxos.amount - amount,
+        "address": selectedUtxos.changeAddress,
+        "amount": selectedUtxos.amount - amount,
         "assetId": asset.assetId
       });
     }
 
     var transfer = {
-      from: utxos.addresses,
+      sendutxo: selectedUtxos.utxos,
       to: to,
       flags: {
         injectPreviousOutput: true

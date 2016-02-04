@@ -1013,24 +1013,29 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       // then try to use smaller utxos to collect required amount (to reduce fragmentation)
       var totalAmount = 0,
           firstUsedIndex = -1,
-          addresses = [];
+          changeAddress,
+          selected = [];
       for (var i = utxos.length - 1; i >= 0; i--) {
         if (utxos[i].assetAmount > amount || utxos[i].isLocked) continue;
         if (firstUsedIndex < 0) { 
           firstUsedIndex = i;
         }
         totalAmount += utxos[i].assetAmount;
-        addresses.push(utxos[i].address);
+        selected.push(utxos[i].txid + ":" + utxos[i].index);
+        if (!changeAddress) {
+          changeAddress = utxos[i].address;
+        }
         if (totalAmount >= amount) {
-          return { addresses: addresses, amount: totalAmount };
+          return { utxos: selected, amount: totalAmount, changeAddress: changeAddress };
         }
       }
 
       // not enough smaller utxos, use the one bigger, if any
       if (firstUsedIndex < utxos.length - 1 && !utxos[firstUsedIndex + 1].isLocked) {
         return { 
-          addresses: [utxos[firstUsedIndex + 1].address], 
-          amount: utxos[firstUsedIndex + 1].assetAmount
+          utxos: [utxos[firstUsedIndex + 1].txid + ":" + utxos[firstUsedIndex + 1].index], 
+          amount: utxos[firstUsedIndex + 1].assetAmount,
+          changeAddress: utxos[firstUsedIndex + 1].address
         };
       }
       
@@ -1048,22 +1053,22 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       "assetId": asset.assetId
     }];
     
-    var utxos = _selectUtxos(asset.utxos, amount);
-    if (!utxos) {
+    var selectedUtxos = _selectUtxos(asset.utxos, amount);
+    if (!selectedUtxos) {
       return cb({ message: 'Not enough assets' });
     }
 
     // transfer the rest of asset back to our address
-    if (amount < utxos.amount) {
+    if (amount < selectedUtxos.amount) {
       to.push({
-        "address": utxos.addresses[0],
-        "amount": utxos.amount - amount,
+        "address": selectedUtxos.changeAddress,
+        "amount": selectedUtxos.amount - amount,
         "assetId": asset.assetId
       });
     }
 
     var transfer = {
-      from: utxos.addresses,
+      sendutxo: selectedUtxos.utxos,
       to: to,
       flags: {
         injectPreviousOutput: true
@@ -105616,6 +105621,8 @@ var Events = require('./events.js')
 var mainnetColuHost = 'https://engine.colu.co'
 var testnetColuHost = 'https://testnet.engine.colu.co'
 
+var sendingMethods = ['address', 'phone_number', 'phoneNumber', 'facebook', 'facebookId', 'email']
+
 var Colu = function (settings) {
   var self = this
   self.initiated = false
@@ -105659,14 +105666,13 @@ Colu.prototype.init = function (cb) {
   }
   self.ds = new DataStorage(settings)
   self.ds.once('connect', function () {
-    self.afterDSInit(cb)
+    afterDSInit(self, cb)
   })
 
   self.ds.init()
 }
 
-Colu.prototype.afterDSInit = function (cb) {
-  var self = this
+var afterDSInit = function (self, cb) {
   self.hdwallet.ds = self.ds
   self.hdwallet.on('connect', function () {
     if (!self.initiated) {
@@ -105700,7 +105706,7 @@ Colu.prototype.buildTransaction = function (type, args, cb) {
   var dataParams = {
     cc_args: args
   }
-  var path = this.coluHost + '/build_finance_'+type
+  var path = this.coluHost + '/build_finance_'+ type
   if (this.apiKey) path += '?token=' + this.apiKey
   request.post(path, {json: dataParams}, function (err, response, body) {
     if (err) return cb(err)
@@ -105711,7 +105717,6 @@ Colu.prototype.buildTransaction = function (type, args, cb) {
 
 Colu.prototype.signAndTransmit = function (txHex, lastTxid, callback) {
   var self = this
-
   var addresses = ColoredCoins.getInputAddresses(txHex, self.network)
   if (!addresses) return callback('can\'t find addresses to fund')
   async.map(addresses,
@@ -105763,7 +105768,15 @@ Colu.prototype.issueAsset = function (args, callback) {
 
       var sendingAmount = parseInt(args.amount, 10)
       args.transfer.forEach(function (to) {
-        to.address = to.address || args.issueAddress
+        var sendingMethod = null
+        Object.keys(to).forEach(function (key) {
+          if (~sendingMethods.indexOf(key)) {
+            sendingMethod = key
+          }
+        })
+        if (!sendingMethod) {
+          to.address = args.issueAddress
+        }
         sendingAmount -= parseInt(to.amount, 10)
       })
       if (sendingAmount > 0) {
@@ -105912,6 +105925,15 @@ Colu.prototype.getTransactionsFromAddresses = function (addresses, callback) {
 
 Colu.prototype.getAssetMetadata = function (assetId, utxo, full, callback) {
   var self = this
+
+  if (typeof full === 'undefined') {
+    full = true   //default value
+  }
+  if (typeof full === 'function') {
+    callback = full
+    full = true
+  }
+
   var metadata
   async.waterfall([
     function (cb) {
@@ -105995,7 +106017,7 @@ Colu.prototype.onNewTransaction = function (callback) {
   if (!self.events) return false
   if (self.eventsSecure) {
     self.events.on('newtransaction', function (data) {
-      if (self.isLocalTransaction(data.newtransaction)) {
+      if (isLocalTransaction(self.addresses, data.newtransaction)) {
         callback(data.newtransaction)
       }
     })
@@ -106005,10 +106027,10 @@ Colu.prototype.onNewTransaction = function (callback) {
     var addresses = []
     var transactions = []
     self.hdwallet.on('registerAddress', function (address) {
-      self.registerAddress(address, addresses, transactions, callback)
+      registerAddress(self, address, addresses, transactions, callback)
     })
     self.addresses.forEach(function (address) {
-      self.registerAddress(address, addresses, transactions, callback)
+      registerAddress(self, address, addresses, transactions, callback)
     })
   }
 }
@@ -106019,7 +106041,7 @@ Colu.prototype.onNewCCTransaction = function (callback) {
   if (!self.events) return false
   if (self.eventsSecure) {
     self.events.on('newcctransaction', function (data) {
-      if (self.isLocalTransaction(data.newcctransaction)) {
+      if (isLocalTransaction(self.addresses, data.newcctransaction)) {
         callback(data.newcctransaction)
       }
     })
@@ -106034,16 +106056,14 @@ Colu.prototype.onNewCCTransaction = function (callback) {
   }
 }
 
-Colu.prototype.isLocalTransaction = function (transaction) {
-  var self = this
-
+var isLocalTransaction = function (addresses, transaction) {
   var localTx = false
   
   if (!localTx && transaction.vin) {
     transaction.vin.forEach(function (input) {
       if (!localTx && input.previousOutput && input.previousOutput.addresses) {
         input.previousOutput.addresses.forEach(function (address) {
-          if (!localTx && ~self.addresses.indexOf(address)) {
+          if (!localTx && ~addresses.indexOf(address)) {
             localTx = true
           }
         })
@@ -106055,7 +106075,7 @@ Colu.prototype.isLocalTransaction = function (transaction) {
     transaction.vout.forEach(function (output) {
       if (!localTx && output.scriptPubKey && output.scriptPubKey.addresses) {
         output.scriptPubKey.addresses.forEach(function (address) {
-          if (!localTx && ~self.addresses.indexOf(address)) {
+          if (!localTx && ~ addresses.indexOf(address)) {
             localTx = true
           }
         })
@@ -106066,9 +106086,7 @@ Colu.prototype.isLocalTransaction = function (transaction) {
   return localTx
 }
 
-Colu.prototype.registerAddress = function (address, addresses, transactions, callback) {
-  var self = this
-  
+var registerAddress = function (self, address, addresses, transactions, callback) {
   if (!~addresses.indexOf(address)) {
     var channel = 'address/'+address
     self.events.on(channel, function (data) {
@@ -110988,8 +111006,7 @@ HDWallet.prototype.registerAddress = function (address, accountIndex, addressInd
 HDWallet.prototype.getAddressPrivateKey = function (address, callback) {
   var self = this
 
-  var addressKey = 'address/' + address
-  self.getAddressPath(addressKey, function (err, addressPath) {
+  self.getAddressPath(address, function (err, addressPath) {
     if (err) return callback(err)
     if (!addressPath) return callback('Addresss ' + address + ' privateKey not found.')
     var path = addressPath.split('/')
@@ -111024,12 +111041,16 @@ HDWallet.prototype.getAddressPrivateKey = function (address, callback) {
       }
     })
     var privateKey = node.privKey
+    privateKey.getFormattedValue = function() {
+      return this.toWIF(self.network)
+    }
     callback(null, privateKey)
   })
 }
 
 HDWallet.prototype.getAddressPath = function (address, callback) {
-  this.getDB(address, callback)
+  var addressKey = 'address/' + address
+  this.getDB(addressKey, callback)
 }
 
 HDWallet.prototype.discover = function (callback) {
@@ -111160,6 +111181,9 @@ HDWallet.prototype.getPrivateKey = function (account, addressIndex) {
   addressIndex = addressIndex || 0
   var hdnode = deriveAddress(self.master, account, addressIndex)
   var privateKey = hdnode.privKey
+  privateKey.getFormattedValue = function() {
+    return this.toWIF(self.network)
+  }
   return privateKey
 }
 
@@ -111168,6 +111192,7 @@ HDWallet.prototype.getPublicKey = function (account, addressIndex) {
 
   var privateKey = self.getPrivateKey(account, addressIndex)
   var publicKey = privateKey.pub
+  publicKey.getFormattedValue = publicKey.toHex
 
   return publicKey
 }
