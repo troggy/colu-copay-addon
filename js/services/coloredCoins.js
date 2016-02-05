@@ -366,15 +366,6 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     });
   };
   
-  var getSymbolFromMetadata = function(asset) {
-    try {
-      return asset.metadata.userData.symbol;
-    } catch (e) {
-    }
-    
-    return null;
-  };
-  
   var getSymbolFromConfig = function(assetId) {
     try {
       return lodash.find(configService.getDefaults().supportedAssets, function(a) {
@@ -387,7 +378,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
 
   root.getAssetSymbol = function(assetId, asset) {
-    var symbolData = getSymbolFromMetadata(asset) || getSymbolFromConfig(assetId);
+    var symbolData = getSymbolFromConfig(assetId);
     return UnitSymbol.create(symbolData) || UnitSymbol.DEFAULT;
   };
 
