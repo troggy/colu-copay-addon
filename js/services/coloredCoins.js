@@ -1,7 +1,7 @@
 'use strict';
 
 function ColoredCoins($rootScope, profileService, addressService, colu, $log,
-                      $q, $timeout, lodash, configService, bitcore) {
+                      $q, $timeout, lodash, configService, bitcore, supportedAssets) {
   var root = {},
       lockedUtxos = [],
       self = this;
@@ -11,6 +11,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   self.assets = $q.defer();
   self._queued = {};
   self.isAvailable = false;
+  self.supportedAssets = supportedAssets;
 
   // UTXOs "cache"
   root.txidToUTXO = {};
@@ -225,13 +226,10 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
   
   var _filterSupportedAssets = function(assetsInfo) {
-    var config = configService.getDefaults();
-    if (config.assets && config.supportedAssets) {
-      var supportedAssets = lodash.pluck(config.supportedAssets, 'assetId');
-      assetsInfo = lodash.reject(assetsInfo, function(i) {
-        return supportedAssets.indexOf(i.assetId) == -1;
-      });
-    }
+    var supportedAssets = lodash.pluck(self.supportedAssets, 'assetId');
+    assetsInfo = lodash.reject(assetsInfo, function(i) {
+      return supportedAssets.indexOf(i.assetId) == -1;
+    });
     return assetsInfo;
   }
 
@@ -368,9 +366,10 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   
   var getSymbolFromConfig = function(assetId) {
     try {
-      return lodash.find(configService.getDefaults().supportedAssets, function(a) {
+      var asset = lodash.find(self.supportedAssets, function(a) {
         return a.assetId === assetId;
-      }).symbol;
+      });
+      return { symbol: asset.symbol, pluralSymbol: asset.pluralSymbol };
     } catch (e) {
     }
     
@@ -485,4 +484,17 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
 }
 
 
-angular.module('copayAddon.colu').service('coloredCoins', ColoredCoins);
+angular.module('copayAddon.colu').provider('coloredCoins', function() {
+  
+  var supportedAssets;
+  
+  this.setSupportedAssets = function(supportedAssets) {
+    this.supportedAssets = supportedAssets;
+  };
+  
+  this.$get = function($rootScope, profileService, addressService, colu, $log,
+                        $q, $timeout, lodash, configService, bitcore) {
+      return new ColoredCoins($rootScope, profileService, addressService, colu, $log,
+                            $q, $timeout, lodash, configService, bitcore, this.supportedAssets);
+  };
+});
