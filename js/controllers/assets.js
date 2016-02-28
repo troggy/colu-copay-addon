@@ -58,7 +58,7 @@ angular.module('copayAddon.colu')
         $scope.asset = asset;
 
         var modalInstance = $modal.open({
-          templateUrl: 'colored-coins/views/modals/send.html',
+          templateUrl: 'colu-copay-addon/views/modals/send.html',
           scope: $scope,
           windowClass: 'full animated slideInUp',
           controller: AssetTransferController
@@ -89,7 +89,7 @@ angular.module('copayAddon.colu')
           };
         };
         var modalInstance = $modal.open({
-          templateUrl: 'colored-coins/views/modals/asset-details.html',
+          templateUrl: 'colu-copay-addon/views/modals/asset-details.html',
           windowClass: 'full animated slideInUp',
           controller: ModalInstanceCtrl
         });
@@ -100,7 +100,7 @@ angular.module('copayAddon.colu')
       this.openIssueModal = function () {
 
         var modalInstance = $modal.open({
-          templateUrl: 'colored-coins/views/modals/issue.html',
+          templateUrl: 'colu-copay-addon/views/modals/issue.html',
           windowClass: 'full animated slideInUp',
           controller: AssetIssueController
         });
