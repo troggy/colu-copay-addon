@@ -1211,9 +1211,8 @@ angular.module('copayAddon.colu').provider('coloredCoins', function() {
 
 angular.module('copayAddon.colu')
   .provider('colu', function () {
-    var DEFAULT_COLU_API_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiI3cjBnZ3lAZ21haWwuY29tIiwiZXhwIjoiMjAxNS0xMS0wOVQwMTozMToxMC45MzNaIiwidHlwZSI6ImFwaV9rZXkifQ.VnT2HH2rl1DBJQ3rwZRjh1vPhNoNjesYfAg07yq0OU8';
-  
-  this.coluKey = DEFAULT_COLU_API_KEY;
+
+  this.coluKey = '';
     
   this.setApiKey = function(apiKey) {
     this.coluKey = apiKey;
@@ -1222,8 +1221,12 @@ angular.module('copayAddon.colu')
   this.$get = function(profileService, $rootScope, feeService, $log, $q) {
     var root = {};
     var that = this;
-
+    
     var coluPromise = function(network) {
+      if (!that.coluKey && network == 'livenet') {
+        throw new Error("Must have apiKey for livenet");
+      }
+
       return $q(function(resolve, reject) {
         var colu = new Colu({
           network: network,
