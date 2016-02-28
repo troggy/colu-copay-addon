@@ -14,6 +14,7 @@ module.exports = function (grunt) {
       dist: {
         src: [
           './js/coluCopayAddon.js',
+          './js/init.js',
           './js/overrides/*.js',
           './js/controllers/assets.js',
           './js/controllers/processingTx.js',
@@ -27,6 +28,22 @@ module.exports = function (grunt) {
           './bower_components/ng-file-upload/ng-file-upload.js'
         ],
         dest: './dist/coluCopayAddon.js'
+      },
+      noIssuance: {
+        src: [
+          './js/coluCopayAddonNoIssuance.js',
+          './js/init.js',
+          './js/overrides/*.js',
+          './js/controllers/assets.js',
+          './js/controllers/processingTx.js',
+          './js/controllers/issue.js',
+          './js/controllers/transfer.js',
+          './js/filters/*.js',
+          './js/services/*.js',
+          './js/models/*.js',
+          './js/directives/*.js'
+        ],
+        dest: './dist/coluCopayAddon-no-issuance.js'
       }
     },
     html2js: {
