@@ -1,6 +1,6 @@
 'use strict';
 
-function ColoredCoins($rootScope, profileService, addressService, colu, $log,
+function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
                       $q, $timeout, lodash, configService, bitcore, supportedAssets) {
   var root = {},
       lockedUtxos = [],
@@ -55,7 +55,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     });
 
     if (addresses.length) {
-      colu.getTransactions(addresses, function(err, body) {
+      coluRpc.getTransactions(addresses, function(err, body) {
         if (err) {
           self.txs.reject(err);
         } else {
@@ -235,7 +235,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
 
   var _getAssetsForAddress = function(address, assetsMap) {
     return $q(function(resolve, reject) {
-      colu.getAddressInfo(address, function(err, addressInfo) {
+      coluRpc.getAddressInfo(address, function(err, addressInfo) {
         if (err) { return reject(err); }
 
         var assetsInfo = extractAssets(addressInfo);
@@ -245,7 +245,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
         var network = profileService.focusedClient.credentials.network;
         assetData = assetsInfo.map(function(asset, i) {
           return $q(function(resolve, reject) {
-            colu.getAssetMetadata(asset, function(err, metadata) {
+            coluRpc.getAssetMetadata(asset, function(err, metadata) {
               if (err) { return reject(err); }
               _addColoredUtxoToMap(asset, metadata, address, network, assetsMap);
               resolve();
@@ -331,7 +331,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       }
     };
 
-    colu.createTx('send', transfer, cb);
+    coluRpc.createTx('send', transfer, cb);
   };
 
   root.createIssueTx = function(issuance, cb) {
@@ -360,7 +360,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
         metadata: metadata
       };
 
-      colu.issueAsset(issuanceOpts, cb);
+      coluRpc.issueAsset(issuanceOpts, cb);
     });
   };
   
@@ -492,9 +492,9 @@ angular.module('copayAddon.colu').provider('coloredCoins', function() {
     this.supportedAssets = supportedAssets;
   };
   
-  this.$get = function($rootScope, profileService, addressService, colu, $log,
+  this.$get = function($rootScope, profileService, addressService, coluRpc, $log,
                         $q, $timeout, lodash, configService, bitcore) {
-      return new ColoredCoins($rootScope, profileService, addressService, colu, $log,
+      return new ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
                             $q, $timeout, lodash, configService, bitcore, this.supportedAssets);
   };
 });

@@ -24,8 +24,7 @@ module.exports = function (grunt) {
           './js/models/*.js',
           './js/directives/*.js',
           './dist/templates.js',
-          './bower_components/ng-file-upload/ng-file-upload.js',
-          'node_modules/colu/client/colu.client.js'
+          './bower_components/ng-file-upload/ng-file-upload.js'
         ],
         dest: './dist/coluCopayAddon.js'
       }
