@@ -11,7 +11,7 @@ module.exports = function (grunt) {
     concat: {
       options: {
       },
-      dist: {
+      full: {
         src: [
           './js/coluCopayAddon.js',
           './js/init.js',
@@ -25,11 +25,12 @@ module.exports = function (grunt) {
           './js/models/*.js',
           './js/directives/*.js',
           './dist/templates.js',
-          './bower_components/ng-file-upload/ng-file-upload.js'
+          './bower_components/ng-file-upload/ng-file-upload.min.js',
+          'node_modules/colu/client/colu.client.js'
         ],
-        dest: './dist/coluCopayAddon.js'
+        dest: './dist/colu-copay-addon.js'
       },
-      noIssuance: {
+      rpcOnly: {
         src: [
           './js/coluCopayAddonNoIssuance.js',
           './js/init.js',
@@ -41,10 +42,12 @@ module.exports = function (grunt) {
           './js/filters/*.js',
           './js/services/*.js',
           './js/models/*.js',
-          './js/directives/*.js'
+          './js/directives/*.js',
+          './bower_components/ng-file-upload/ng-file-upload.min.js'
         ],
-        dest: './dist/coluCopayAddon-no-issuance.js'
+        dest: './dist/colu-copay-addon.rpc-only.js'
       }
+
     },
     html2js: {
       app: {
