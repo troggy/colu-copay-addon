@@ -8,23 +8,23 @@ angular.module('copayAddon.colu')
   this.rpcConfig = {
     livenet: {
       rpcHost: '',      // Colu JSON RPC host
-      rpcUsername: '',  // (optional) Colu JSON RPC username for Basic Auth 
-      rpcPassword: '',  // (optional) Colu JSON RPC password for Basic Auth 
+      rpcUsername: '',  // (optional) Colu JSON RPC username for Basic Auth
+      rpcPassword: '',  // (optional) Colu JSON RPC password for Basic Auth
     },
     testnet: {
       rpcHost: '',      // Colu JSON RPC host
-      rpcUsername: '',  // (optional) Colu JSON RPC username for Basic Auth 
-      rpcPassword: '',  // (optional) Colu JSON RPC password for Basic Auth 
+      rpcUsername: '',  // (optional) Colu JSON RPC username for Basic Auth
+      rpcPassword: '',  // (optional) Colu JSON RPC password for Basic Auth
     }
   };
-    
+
   this.configure = function(config) {
     this.rpcConfig = config;
   }
 
   this.$get = function(profileService, $rootScope, $log, $http) {
     var root = {};
-    
+
     that._handleDataResponse = function(response, cb) {
       var data = response.data;
       if (data.error) {
@@ -49,18 +49,18 @@ angular.module('copayAddon.colu')
         return cb(err, body);
       };
     };
-    
+
     var _request = function(method, data, cb) {
       var network = profileService.focusedClient.credentials.network,
           rpcConfig = that.rpcConfig[network];
-      
+
 
       if (rpcConfig.authName) {
         config.headers = {
           Authorization: 'Basic ' + $base64.encode(rpcConfig.authName + ':' + rpcConfig.authSecret)
         };
       }
-      
+
       var request = {
         url: rpcConfig.baseUrl,
         method: 'POST',
@@ -77,7 +77,7 @@ angular.module('copayAddon.colu')
         that._handleErrorResponse(response, withLog(cb));
       });
     };
-    
+
     $rootScope.$on('ColoredCoins/BroadcastTxp', function(e, txp) {
       root.broadcastTx(txp.raw, txp.customData.financeTxId, function (err, body) {
         if (err) {
@@ -96,9 +96,9 @@ angular.module('copayAddon.colu')
       var params = {
         signedTxHex: signedTxHex,
         lastTxid: lastTxId
-      };  
-            
-      _request("transmit", params, cb);  
+      };
+
+      _request("transmit", params, cb);
     };
 
     root.getAssetMetadata = function(asset, cb) {
@@ -106,18 +106,18 @@ angular.module('copayAddon.colu')
         assetId: asset.assetId,
         utxo: asset.utxo.txid + ":" + asset.utxo.index
       };
-            
-      _request("getAssetMetadata", params, cb);  
+
+      _request("getAssetMetadata", params, cb);
     };
 
     root.getAddressInfo = function(address, cb) {
-      _request("coloredCoins.getAddressInfo", { address: address }, cb);  
+      _request("coloredCoins.getAddressInfo", { address: address }, cb);
     };
 
     root.issueAsset = function(params, cb) {
       $log.debug("Issuing asset via Colu: " + JSON.stringify(params));
-            
-      _request("issueAsset", { params : params }, cb);  
+
+      _request("issueAsset", { params : params }, cb);
     };
 
     root.createTx = function(type, args, cb) {
@@ -125,21 +125,21 @@ angular.module('copayAddon.colu')
       var params = {
         type: type,
         args: args
-      };  
-            
-      _request("buildTransaction", params, cb);  
+      };
+
+      _request("buildTransaction", params, cb);
     };
-    
+
     root.getTransactions = function(addresses, cb) {
       $log.debug("Getting transactions for addresses via Colu..");
       var params = {
         addresses: addresses
       };
-            
-      _request("getTransactions", params, cb);  
+
+      _request("getTransactions", params, cb);
     };
 
     return root;
   }
-  
+
 });

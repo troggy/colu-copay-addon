@@ -6,9 +6,45 @@ may not work with other versions.
 
 # Setup
 
-Use coluProvider to set Colu API key:
+You can either use Colu SDK or Colu API with this addon. Depending on your choice set up will be slightly different.
+
+## Option 1. Using Colu SDK.
+
+Colu wallet code will be bundled into your app.
+
+1. Load ``colu-copay-addon.js`` somewhere in your app's html files.
+
+2. Use ``coluProvider`` to set Colu API key. You can find your key in Colu Dashboard.
 
 ````
-coluProvider.setApiKey("<YOUR COLU API KEY>");
+coluProvider.config({
+  mode: 'sdk',
+  apiKey: '<YOUR COLU API KEY>'
+});
 ````
 
+## Option 2. Using Colu API.
+
+You will need to run Colu Server somewhere. This option is mostly useful if you want to build mobile application — you don't need to include all the Colu wallet code into your app making your app smaller in size and thus faster to load.
+
+1. Load ``colu-copay-addon.rpc-only.js`` somewhere in your app's html files.
+
+2. Use ``coluProvider`` to point to your Colu Server instance.
+
+````
+coluProvider.config({
+  mode: 'rpc',
+  rpcConfig: {
+    livenet: {
+      rpcHost: '<YOUR COLU MAINNET SERVER HOST>',      // Colu JSON RPC host
+      rpcUsername: '<YOUR COLU MAINNET SERVER AUTH USERNAME>',  // (optional) Colu JSON RPC username for Basic Auth
+      rpcPassword: '<YOUR COLU MAINNET SERVER AUTH PASSWORD>',  // (optional) Colu JSON RPC password for Basic Auth
+    },
+    testnet: {
+      rpcHost: '<YOUR COLU TESTNET SERVER HOST>',      // Colu JSON RPC host
+      rpcUsername: '<YOUR COLU TESTNET SERVER AUTH USERNAME>',  // (optional) Colu JSON RPC username for Basic Auth
+      rpcPassword: '<YOUR COLU TESTNET SERVER AUTH PASSWORD>',  // (optional) Colu JSON RPC password for Basic Auth
+    }
+  }
+});
+````
