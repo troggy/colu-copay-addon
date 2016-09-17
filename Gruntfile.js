@@ -32,7 +32,7 @@ module.exports = function (grunt) {
       },
       rpcOnly: {
         src: [
-          './js/coluCopayAddonNoIssuance.js',
+          './js/coluCopayAddon.js',
           './js/init.js',
           './js/overrides/*.js',
           './js/controllers/assets.js',
