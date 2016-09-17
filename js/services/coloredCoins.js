@@ -1,12 +1,12 @@
 'use strict';
 
-function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
+function ColoredCoins($rootScope, profileService, addressService, colu, $log,
                       $q, $timeout, lodash, configService, bitcore, supportedAssets) {
   var root = {},
       lockedUtxos = [],
       self = this;
-      
-      
+
+
   self.txs = $q.defer(),
   self.assets = $q.defer();
   self._queued = {};
@@ -28,12 +28,12 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
     self.assets = $q.defer();
     self.isAvailable = false;
   });
-  
+
   var _setOngoingProcess = function(name) {
     $rootScope.$emit('Addon/OngoingProcess', name);
     root.onGoingProcess = name;
   };
-  
+
   var disableBalanceListener = $rootScope.$on('Local/BalanceUpdated', function (event, balance) {
     root.assets = null;
     root.assetsMap = null;
@@ -43,7 +43,7 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
     self.isAvailable = false;
     $rootScope.$emit('ColoredCoins/Error', null);
     var addresses = lodash.pluck(balance.byAddress, 'address');
-    
+
     $q.all([root.getAssets(), root.getColorTransactions()]).then(function(result) {
       self.isAvailable = true;
       lodash.values(self._queued).forEach(function(callback) {
@@ -55,7 +55,7 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
     });
 
     if (addresses.length) {
-      coluRpc.getTransactions(addresses, function(err, body) {
+      colu.getTransactions(addresses, function(err, body) {
         if (err) {
           self.txs.reject(err);
         } else {
@@ -86,7 +86,7 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
       _setOngoingProcess();
     });
   });
-  
+
   root.whenAvailable = function(cb) {
     if (self.isAvailable) {
       $timeout(function() {
@@ -114,8 +114,8 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
           .reduce( function(map, asset) {
             var assetSummary = map[asset.assetId];
             if (!assetSummary) {
-              map[asset.assetId] = assetSummary = { 
-                amount: 0, 
+              map[asset.assetId] = assetSummary = {
+                amount: 0,
                 assetId: asset.assetId,
                 utxo: utxoToKeep
               };
@@ -163,7 +163,7 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
   root.getColorTransactions = function() {
     return self.txs.promise;
   };
-  
+
   root.getAssets = function() {
     return self.assets.promise;
   };
@@ -183,7 +183,7 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
           assetPromises = lodash.map(addresses, function (address) {
             return _getAssetsForAddress(address, assetsMap);
           });
-      
+
       $q.all(assetPromises).then(function() {
         lodash.each(lodash.values(assetsMap), function(asset) {
             asset.unitSymbol = root.getAssetSymbol(asset.assetId, asset);
@@ -198,11 +198,11 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
       });
     });
   };
-  
+
   var _addColoredUtxoToMap = function(asset, metadata, address, network, assetsMap) {
     var groupedAsset = assetsMap[asset.assetId];
     if (!groupedAsset) {
-      groupedAsset = { 
+      groupedAsset = {
                       assetId: asset.assetId,
                       amount: 0,
                       network: network,
@@ -224,7 +224,7 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
     groupedAsset.utxos.push(asset.utxo);
     groupedAsset.amount += asset.amount;
   };
-  
+
   var _filterSupportedAssets = function(assetsInfo) {
     var supportedAssets = lodash.pluck(self.supportedAssets, 'assetId');
     assetsInfo = lodash.reject(assetsInfo, function(i) {
@@ -235,17 +235,17 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
 
   var _getAssetsForAddress = function(address, assetsMap) {
     return $q(function(resolve, reject) {
-      coluRpc.getAddressInfo(address, function(err, addressInfo) {
+      colu.getAddressInfo(address, function(err, addressInfo) {
         if (err) { return reject(err); }
 
         var assetsInfo = extractAssets(addressInfo);
         $log.debug("Assets for " + address + ": " + JSON.stringify(assetsInfo));
         assetsInfo = _filterSupportedAssets(assetsInfo);
-        
+
         var network = profileService.focusedClient.credentials.network;
         assetData = assetsInfo.map(function(asset, i) {
           return $q(function(resolve, reject) {
-            coluRpc.getAssetMetadata(asset, function(err, metadata) {
+            colu.getAssetMetadata(asset, function(err, metadata) {
               if (err) { return reject(err); }
               _addColoredUtxoToMap(asset, metadata, address, network, assetsMap);
               resolve();
@@ -261,10 +261,10 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
       });
     });
   };
-  
+
   var _selectUtxos = function(utxos, amount) {
       utxos = lodash.sortBy(utxos, 'assetAmount');
-      
+
       // first, let's try to use single utxo with exact amount,
       // then try to use smaller utxos to collect required amount (to reduce fragmentation)
       var totalAmount = 0,
@@ -273,7 +273,7 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
           selected = [];
       for (var i = utxos.length - 1; i >= 0; i--) {
         if (utxos[i].assetAmount > amount || utxos[i].isLocked) continue;
-        if (firstUsedIndex < 0) { 
+        if (firstUsedIndex < 0) {
           firstUsedIndex = i;
         }
         totalAmount += utxos[i].assetAmount;
@@ -288,13 +288,13 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
 
       // not enough smaller utxos, use the one bigger, if any
       if (firstUsedIndex < utxos.length - 1 && !utxos[firstUsedIndex + 1].isLocked) {
-        return { 
-          utxos: [utxos[firstUsedIndex + 1].txid + ":" + utxos[firstUsedIndex + 1].index], 
+        return {
+          utxos: [utxos[firstUsedIndex + 1].txid + ":" + utxos[firstUsedIndex + 1].index],
           amount: utxos[firstUsedIndex + 1].assetAmount,
           changeAddress: utxos[firstUsedIndex + 1].address
         };
       }
-      
+
       return null;
   };
 
@@ -308,7 +308,7 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
       "amount": amount,
       "assetId": asset.assetId
     }];
-    
+
     var selectedUtxos = _selectUtxos(asset.utxos, amount);
     if (!selectedUtxos) {
       return cb({ message: 'Not enough assets' });
@@ -331,7 +331,7 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
       }
     };
 
-    coluRpc.createTx('send', transfer, cb);
+    colu.createTx('send', transfer, cb);
   };
 
   root.createIssueTx = function(issuance, cb) {
@@ -360,10 +360,10 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
         metadata: metadata
       };
 
-      coluRpc.issueAsset(issuanceOpts, cb);
+      colu.issueAsset(issuanceOpts, cb);
     });
   };
-  
+
   var getSymbolFromConfig = function(assetId) {
     try {
       var asset = lodash.find(self.supportedAssets, function(a) {
@@ -372,7 +372,7 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
       return { symbol: asset.symbol, pluralSymbol: asset.pluralSymbol };
     } catch (e) {
     }
-    
+
     return null;
   };
 
@@ -383,7 +383,7 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
 
   root.formatAssetAmount = function(amount, asset, unitSymbol) {
     asset = asset || {};
-    
+
     function formatAssetValue(value, decimalPlaces) {
       if (!value) {
         return '0';
@@ -396,21 +396,21 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
       x0 = x0.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       return decimalPlaces > 0 ? x0 + '.' + x1 : x0;
     }
-    
+
     if (!asset.unitSymbol) {
       asset.unitSymbol = unitSymbol || root.getAssetSymbol(asset.assetId, asset);
     }
 
     return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + asset.unitSymbol.forAmount(amount);
   };
-  
+
   root.sendTransferTxProposal = function (amount, toAddress, comment, asset, cb) {
     $log.debug("Transfering " + amount + " units(s) of asset " + asset.assetId + " to " + toAddress);
 
     var fc = profileService.focusedClient;
-    
+
     createTransferTx(asset, amount, toAddress, function (err, result) {
-      if (err) { 
+      if (err) {
         return cb(err.error || err);
       }
 
@@ -485,16 +485,16 @@ function ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
 
 
 angular.module('copayAddon.colu').provider('coloredCoins', function() {
-  
+
   var supportedAssets;
-  
+
   this.setSupportedAssets = function(supportedAssets) {
     this.supportedAssets = supportedAssets;
   };
-  
-  this.$get = function($rootScope, profileService, addressService, coluRpc, $log,
+
+  this.$get = function($rootScope, profileService, addressService, colu, $log,
                         $q, $timeout, lodash, configService, bitcore) {
-      return new ColoredCoins($rootScope, profileService, addressService, coluRpc, $log,
+      return new ColoredCoins($rootScope, profileService, addressService, colu, $log,
                             $q, $timeout, lodash, configService, bitcore, this.supportedAssets);
   };
 });
