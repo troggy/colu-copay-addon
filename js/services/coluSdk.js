@@ -1,27 +1,18 @@
 'use strict';
 
 angular.module('copayAddon.colu')
-  .provider('coluSdk', function () {
-
-  this.coluKey = '';
-
-  this.setApiKey = function(apiKey) {
-    this.coluKey = apiKey;
-  }
-
-  this.$get = function(profileService, $rootScope, $log, $q) {
+  .service('coluSdk', function(profileService, $rootScope, $log, $q, coluConfig) {
     var root = {};
-    var that = this;
 
     var coluPromise = function(network) {
-      if (!that.coluKey && network == 'livenet') {
+      if (!coluConfig.apiKey && network == 'livenet') {
         throw new Error("Must have apiKey for livenet");
       }
 
       return $q(function(resolve, reject) {
         var colu = new Colu({
           network: network,
-          apiKey: network == 'livenet' ? that.coluKey : undefined
+          apiKey: network == 'livenet' ? coluConfig.apiKey : undefined
         });
         colu.on('connect', function () {
           resolve(colu);
@@ -104,6 +95,4 @@ angular.module('copayAddon.colu')
     };
 
     return root;
-  }
-
 });

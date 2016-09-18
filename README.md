@@ -14,10 +14,10 @@ Colu wallet code will be bundled into your app.
 
 1. Load ``colu-copay-addon.js`` somewhere in your app's html files.
 
-2. Use ``coluProvider`` to set Colu API key. You can find your key in Colu Dashboard.
+2. Use ``coluConfigProvider`` to set Colu API key. You can find your key in Colu Dashboard.
 
 ````
-coluProvider.config({
+coluConfigProvider.config({
   mode: 'sdk',
   apiKey: '<YOUR COLU API KEY>'
 });
@@ -29,10 +29,10 @@ You will need to run Colu Server somewhere. This option is mostly useful if you 
 
 1. Load ``colu-copay-addon.rpc-only.js`` somewhere in your app's html files.
 
-2. Use ``coluProvider`` to point to your Colu Server instance.
+2. Use ``coluConfigProvider`` to point to your Colu Server instance.
 
 ````
-coluProvider.config({
+coluConfigProvider.config({
   mode: 'rpc',
   rpcConfig: {
     livenet: {

@@ -1,31 +1,10 @@
 'use strict';
 
 angular.module('copayAddon.colu')
-  .provider('coluRpc', function () {
-
-  var that = this;
-
-  this.rpcConfig = {
-    livenet: {
-      rpcHost: '',      // Colu JSON RPC host
-      rpcUsername: '',  // (optional) Colu JSON RPC username for Basic Auth
-      rpcPassword: '',  // (optional) Colu JSON RPC password for Basic Auth
-    },
-    testnet: {
-      rpcHost: '',      // Colu JSON RPC host
-      rpcUsername: '',  // (optional) Colu JSON RPC username for Basic Auth
-      rpcPassword: '',  // (optional) Colu JSON RPC password for Basic Auth
-    }
-  };
-
-  this.configure = function(config) {
-    this.rpcConfig = config;
-  }
-
-  this.$get = function(profileService, $rootScope, $log, $http) {
+  .service('coluRpc', function(profileService, $rootScope, $log, $http, coluConfig) {
     var root = {};
 
-    that._handleDataResponse = function(response, cb) {
+    var _handleDataResponse = function(response, cb) {
       var data = response.data;
       if (data.error) {
         cb(data.error);
@@ -36,7 +15,7 @@ angular.module('copayAddon.colu')
       }
     };
 
-    that._handleErrorResponse = function(response, cb) {
+    var _handleErrorResponse = function(response, cb) {
       $log.error(response.status + ': ' + JSON.stringify(response.data));
       cb(response.status == 500 ? 'Server error' : response.data);
     };
@@ -52,7 +31,7 @@ angular.module('copayAddon.colu')
 
     var _request = function(method, data, cb) {
       var network = profileService.focusedClient.credentials.network,
-          rpcConfig = that.rpcConfig[network];
+          rpcConfig = coluConfig.rpcConfig[network];
 
 
       if (rpcConfig.authName) {
@@ -72,9 +51,9 @@ angular.module('copayAddon.colu')
         }
       };
       $http(request).then(function successCallback(response) {
-        that._handleDataResponse(response, withLog(cb));
+        _handleDataResponse(response, withLog(cb));
       }, function errorCallback(response) {
-        that._handleErrorResponse(response, withLog(cb));
+        _handleErrorResponse(response, withLog(cb));
       });
     };
 
@@ -140,6 +119,4 @@ angular.module('copayAddon.colu')
     };
 
     return root;
-  }
-
 });
