@@ -404,7 +404,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + asset.unitSymbol.forAmount(amount);
   };
 
-  root.sendTransferTxProposal = function (amount, toAddress, comment, asset, cb) {
+  root.makeTransferTxProposal = function (amount, toAddress, comment, asset, cb) {
     $log.debug("Transfering " + amount + " units(s) of asset " + asset.assetId + " to " + toAddress);
 
     var fc = profileService.focusedClient;
@@ -425,11 +425,11 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
         },
         financeTxId: result.financeTxid
       };
-      sendTxProposal(result.txHex, toAddress, comment, customData, cb);
+      makeTxProposal(result.txHex, toAddress, comment, customData, cb);
     });
   };
 
-  var sendTxProposal = function (txHex, toAddress, comment, customData, cb) {
+  var makeTxProposal = function (txHex, toAddress, comment, customData, cb) {
     var fc = profileService.focusedClient;
     var tx = new bitcore.Transaction(txHex);
     $log.debug(JSON.stringify(tx.toObject(), null, 2));
@@ -460,23 +460,16 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     // for Copay to show recipient properly
     outputs[0].toAddress = toAddress;
 
-    fc.sendTxProposal({
-      type: 'external',
+    cb(null, {
       inputs: inputs,
       outputs: outputs,
       noOutputsShuffle: true,
+      validateOutputs: false,
       message: comment,
       payProUrl: null,
-      feePerKb: 43978,
-      fee: 5000,
+      fee: 5000, //todo: hack for BWS not to estimate fee for us
       customData: customData,
       utxosToExclude: root.getColoredUtxos()
-    }, function (err, txp) {
-      if (err) {
-        return cb(err);
-      }
-      txp.changeAddress = inputs[0].address;
-      return cb(null, txp);
     });
   };
 
