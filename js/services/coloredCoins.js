@@ -404,6 +404,10 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + asset.unitSymbol.forAmount(amount);
   };
 
+  root.broadcastTx = function(rawTx, financeTxId, cb) {
+    return colu.broadcastTx(rawTx, financeTxId, cb);
+  };
+
   root.makeTransferTxProposal = function (amount, toAddress, comment, asset, cb) {
     $log.debug("Transfering " + amount + " units(s) of asset " + asset.assetId + " to " + toAddress);
 
@@ -463,7 +467,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     cb(null, {
       inputs: inputs,
       outputs: outputs,
-      noOutputsShuffle: true,
+      noShuffleOutputs: true,
       validateOutputs: false,
       message: comment,
       payProUrl: null,
