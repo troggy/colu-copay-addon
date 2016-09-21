@@ -7,8 +7,8 @@ angular.module('copayAddon.colu').config(function ($provide) {
     $delegate._templateUrl = function(type, txp) {
       if (txp.customData && txp.customData.asset) {
         return txp.customData.asset.action == 'transfer'
-            ? 'colu-copay-addon/views/modals/transfer-status.html'
-            : 'colu-copay-addon/views/modals/issue-status.html';
+            ? 'views/coloredcoins/modals/transfer-status.html'
+            : 'views/coloredcoins/modals/issue-status.html';
       }
       return defaultTemplateUrl(type, txp);
     };

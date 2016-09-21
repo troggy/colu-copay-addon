@@ -43,6 +43,7 @@ module.exports = function (grunt) {
           './js/services/*.js',
           './js/models/*.js',
           './js/directives/*.js',
+          './dist/templates.js',
           './bower_components/ng-file-upload/ng-file-upload.min.js'
         ],
         dest: './dist/colu-copay-addon.rpc-only.js'
@@ -53,10 +54,10 @@ module.exports = function (grunt) {
       app: {
         options: {
           rename: function(moduleName) {
-            return 'colu-copay-addon/' + moduleName.replace('../', '');
+            return moduleName.replace('../', '');
           }
         },
-        src: ['./views/{,*/}*.html'],
+        src: ['./views/**/*.html'],
         dest: './dist/templates.js',
         module: 'copayAssetViewTemplates'
       }
