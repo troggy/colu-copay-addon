@@ -27,7 +27,7 @@ angular.module('copayAddon.colu').config(function ($provide) {
         }
       }
 
-      coloredCoins.getAssets().then(function(assets) { 
+      coloredCoins.getAssets().then(function(assets) {
         setData(assets, $scope.index.asset);
       });
 
@@ -35,7 +35,7 @@ angular.module('copayAddon.colu').config(function ($provide) {
         setData(coloredCoins.assets, walletAsset);
       });
     };
-    directive.templateUrl = 'colu-copay-addon/views/includes/available-balance.html';
+    directive.templateUrl = 'views/coloredcoins/includes/available-balance.html';
     return $delegate;
   });
 
