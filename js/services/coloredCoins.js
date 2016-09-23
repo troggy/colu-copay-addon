@@ -263,7 +263,10 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
 
   var _selectUtxos = function(utxos, amount) {
-      utxos = lodash.sortBy(utxos, 'assetAmount');
+      utxos = lodash.chain(utxos)
+        .sortBy('assetAmount')
+        .reject('isLocked')
+        .value();
 
       // first, let's try to use single utxo with exact amount,
       // then try to use smaller utxos to collect required amount (to reduce fragmentation)
@@ -271,8 +274,9 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           firstUsedIndex = -1,
           changeAddress,
           selected = [];
+
       for (var i = utxos.length - 1; i >= 0; i--) {
-        if (utxos[i].assetAmount > amount || utxos[i].isLocked) continue;
+        if (utxos[i].assetAmount > amount) continue;
         if (firstUsedIndex < 0) {
           firstUsedIndex = i;
         }
@@ -287,7 +291,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       }
 
       // not enough smaller utxos, use the one bigger, if any
-      if (firstUsedIndex < utxos.length - 1 && !utxos[firstUsedIndex + 1].isLocked) {
+      if (firstUsedIndex < utxos.length - 1) {
         return {
           utxos: [utxos[firstUsedIndex + 1].txid + ":" + utxos[firstUsedIndex + 1].index],
           amount: utxos[firstUsedIndex + 1].assetAmount,
