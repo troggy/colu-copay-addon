@@ -1,4 +1,4 @@
-<ion-modal-view>
+<ion-modal-view ng-controller="txStatusController">
   <div ng-if="type == 'broadcasted'" class="popup-txsent text-center">
     <i class="small-centered columns fi-check m30tp" ng-style="{'color':color, 'border-color':color}"></i>
     <div ng-show="tx.amountStr" class="m20t size-36 text-white">
