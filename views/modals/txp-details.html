@@ -1,6 +1,6 @@
 {{ maybeAssetPrefix = tx.isAsset
     ? (tx.customData.asset.action === 'transfer' ? 'Asset Transfer' : 'New Asset')
-    : 'Payment' }}
+    : 'Payment';"" }}
 
 <ion-modal-view ng-controller="txpDetailsController">
   <ion-header-bar align-title="center" class="tab-bar" ng-style="{'background-color':color}">
