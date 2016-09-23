@@ -206,7 +206,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
                       assetId: asset.assetId,
                       amount: 0,
                       network: network,
-                      divisible: metadata.divisibility,
+                      divisibility: metadata.divisibility,
                       reissuable: metadata.lockStatus == false,
                       icon: _extractAssetIcon(metadata),
                       issuanceTxid: metadata.issuanceTxid,
@@ -401,7 +401,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       asset.unitSymbol = unitSymbol || root.getAssetSymbol(asset.assetId, asset);
     }
 
-    return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + asset.unitSymbol.forAmount(amount);
+    return formatAssetValue(amount, asset ? asset.divisibility: 0) + ' ' + asset.unitSymbol.forAmount(amount);
   };
 
   root.broadcastTx = function(rawTx, financeTxId, cb) {

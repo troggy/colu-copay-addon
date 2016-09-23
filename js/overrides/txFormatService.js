@@ -8,7 +8,7 @@ angular.module('copayAddon.colu').config(function ($provide) {
     $delegate.processTx = function (tx) {
       defaultProcessTx(tx);
 
-      tx.isAsset = tx.customData && tx.customData.asset;
+      tx.isAsset = !!(tx.customData && tx.customData.asset) || tx.isColored;
       if (tx.isAsset) {
         tx.amountStr = tx.customData.asset.balanceStr;
         tx.addressTo = tx.outputs[0].address;
