@@ -67,6 +67,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           self.txs.resolve(txMap);
         }
       });
+    } else {
+      self.txs.resolve({});
     }
 
     _setOngoingProcess('Getting assets');
