@@ -274,7 +274,6 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       // then try to use smaller utxos to collect required amount (to reduce fragmentation)
       var totalAmount = 0,
           firstUsedIndex = -1,
-          changeAddress,
           selected = [];
 
       for (var i = utxos.length - 1; i >= 0; i--) {
@@ -284,11 +283,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
         }
         totalAmount += utxos[i].assetAmount;
         selected.push(utxos[i].txid + ":" + utxos[i].index);
-        if (!changeAddress) {
-          changeAddress = utxos[i].address;
-        }
         if (totalAmount >= amount) {
-          return { utxos: selected, amount: totalAmount, changeAddress: changeAddress };
+          return { utxos: selected, amount: totalAmount };
         }
       }
 
@@ -296,8 +292,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       if (firstUsedIndex < utxos.length - 1) {
         return {
           utxos: [utxos[firstUsedIndex + 1].txid + ":" + utxos[firstUsedIndex + 1].index],
-          amount: utxos[firstUsedIndex + 1].assetAmount,
-          changeAddress: utxos[firstUsedIndex + 1].address
+          amount: utxos[firstUsedIndex + 1].assetAmount
         };
       }
 
@@ -305,6 +300,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
 
   var createTransferTx = function(asset, amount, toAddress, cb) {
+    var fc = profileService.focusedClient;
+
     if (amount > asset.availableBalance) {
       return cb({ error: "Cannot transfer more assets then available" }, null);
     }
@@ -320,24 +317,26 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       return cb({ message: 'Not enough assets' });
     }
 
-    // transfer the rest of asset back to our address
-    if (amount < selectedUtxos.amount) {
-      to.push({
-        "address": selectedUtxos.changeAddress,
-        "amount": selectedUtxos.amount - amount,
-        "assetId": asset.assetId
-      });
-    }
-
-    var transfer = {
-      sendutxo: selectedUtxos.utxos,
-      to: to,
-      flags: {
-        injectPreviousOutput: true
+    addressService.getChangeAddress(fc.credentials.walletId, function(err, changeAddress) {
+      // transfer the rest of asset back to our address
+      if (amount < selectedUtxos.amount) {
+        to.push({
+          "address": changeAddress,
+          "amount": selectedUtxos.amount - amount,
+          "assetId": asset.assetId
+        });
       }
-    };
 
-    colu.createTx('send', transfer, cb);
+      var transfer = {
+        sendutxo: selectedUtxos.utxos,
+        to: to,
+        flags: {
+          injectPreviousOutput: true
+        }
+      };
+
+      colu.createTx('send', transfer, cb);
+    });
   };
 
   root.createIssueTx = function(issuance, cb) {
