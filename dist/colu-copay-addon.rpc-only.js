@@ -7,14 +7,6 @@ var coluCopayModule = angular.module('copayAddon.colu', [
 angular.module('copayAddon.colu')
     .run(function (addonManager, coloredCoins, $state) {
       addonManager.registerAddon({
-        formatPendingTxp: function(txp) {
-          if (txp.customData && txp.customData.asset) {
-            txp.amountStr = txp.customData.asset.balanceStr || txp.amountStr + '(colored)';
-            txp.isColored = true;
-            txp.toAddress = txp.outputs[0].toAddress; // txproposal
-            txp.address = txp.outputs[0].address;     // txhistory
-          }
-        },
         processCreateTxOpts: function(txOpts) {
           txOpts.utxosToExclude = (txOpts.utxosToExclude || []).concat(coloredCoins.getColoredUtxos());
         }
@@ -133,39 +125,15 @@ angular.module('copayAddon.colu').config(function ($provide) {
   $provide.decorator('profileService', function ($delegate, $rootScope) {
     var defaultSetWalletClient = $delegate.setWalletClient;
 
-    $delegate.setWalletClient = function (credentials) {
-      defaultSetWalletClient(credentials);
-      var client = $delegate.walletClients[credentials.walletId];
-
-      if (!client) return;
-
-      var defaultBroadcastTxProposal = client.broadcastTxProposal.bind(client);
-
-      client.broadcastTxProposal = function (txp, opts, cb) {
-        if (txp.customData && txp.customData.financeTxId) {
-          var disableSuccessListener, disableErrorListener;
-          disableSuccessListener = $rootScope.$on('ColoredCoins/Broadcast:success', function() {
-            disableSuccessListener();
-            disableErrorListener();
-            defaultBroadcastTxProposal(txp, opts, cb);
-          });
-          disableErrorListener = $rootScope.$on('ColoredCoins/Broadcast:error', function(e, err) {
-            disableSuccessListener();
-            disableErrorListener();
-            cb(err);
-          });
-
-          $rootScope.$emit('ColoredCoins/BroadcastTxp', txp);
-        } else {
-          defaultBroadcastTxProposal(txp, opts, cb);
-        }
-      };
-
-      return client;
+    // do not enforce backups
+    $delegate.needsBackup = function(client, cb) {
+      return cb(false);
     };
+
     return $delegate;
   });
 });
+
 'use strict';
 
 angular.module('copayAddon.colu').config(function ($provide) {
@@ -176,7 +144,7 @@ angular.module('copayAddon.colu').config(function ($provide) {
     $delegate.processTx = function (tx) {
       defaultProcessTx(tx);
 
-      tx.isAsset = tx.customData && tx.customData.asset;
+      tx.isAsset = !!(tx.customData && tx.customData.asset) || tx.isColored;
       if (tx.isAsset) {
         tx.amountStr = tx.customData.asset.balanceStr;
         tx.addressTo = tx.outputs[0].address;
@@ -576,6 +544,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
           self.txs.resolve(txMap);
         }
       });
+    } else {
+      self.txs.resolve({});
     }
 
     _setOngoingProcess('Getting assets');
@@ -715,7 +685,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
                       assetId: asset.assetId,
                       amount: 0,
                       network: network,
-                      divisible: metadata.divisibility,
+                      divisibility: metadata.divisibility,
                       reissuable: metadata.lockStatus == false,
                       icon: _extractAssetIcon(metadata),
                       issuanceTxid: metadata.issuanceTxid,
@@ -772,35 +742,34 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
 
   var _selectUtxos = function(utxos, amount) {
-      utxos = lodash.sortBy(utxos, 'assetAmount');
+      utxos = lodash.chain(utxos)
+        .sortBy('assetAmount')
+        .reject('isLocked')
+        .value();
 
       // first, let's try to use single utxo with exact amount,
       // then try to use smaller utxos to collect required amount (to reduce fragmentation)
       var totalAmount = 0,
           firstUsedIndex = -1,
-          changeAddress,
           selected = [];
+
       for (var i = utxos.length - 1; i >= 0; i--) {
-        if (utxos[i].assetAmount > amount || utxos[i].isLocked) continue;
+        if (utxos[i].assetAmount > amount) continue;
         if (firstUsedIndex < 0) {
           firstUsedIndex = i;
         }
         totalAmount += utxos[i].assetAmount;
         selected.push(utxos[i].txid + ":" + utxos[i].index);
-        if (!changeAddress) {
-          changeAddress = utxos[i].address;
-        }
         if (totalAmount >= amount) {
-          return { utxos: selected, amount: totalAmount, changeAddress: changeAddress };
+          return { utxos: selected, amount: totalAmount };
         }
       }
 
       // not enough smaller utxos, use the one bigger, if any
-      if (firstUsedIndex < utxos.length - 1 && !utxos[firstUsedIndex + 1].isLocked) {
+      if (firstUsedIndex < utxos.length - 1) {
         return {
           utxos: [utxos[firstUsedIndex + 1].txid + ":" + utxos[firstUsedIndex + 1].index],
-          amount: utxos[firstUsedIndex + 1].assetAmount,
-          changeAddress: utxos[firstUsedIndex + 1].address
+          amount: utxos[firstUsedIndex + 1].assetAmount
         };
       }
 
@@ -808,6 +777,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
 
   var createTransferTx = function(asset, amount, toAddress, cb) {
+    var fc = profileService.focusedClient;
+
     if (amount > asset.availableBalance) {
       return cb({ error: "Cannot transfer more assets then available" }, null);
     }
@@ -823,24 +794,26 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       return cb({ message: 'Not enough assets' });
     }
 
-    // transfer the rest of asset back to our address
-    if (amount < selectedUtxos.amount) {
-      to.push({
-        "address": selectedUtxos.changeAddress,
-        "amount": selectedUtxos.amount - amount,
-        "assetId": asset.assetId
-      });
-    }
-
-    var transfer = {
-      sendutxo: selectedUtxos.utxos,
-      to: to,
-      flags: {
-        injectPreviousOutput: true
+    addressService.getChangeAddress(fc.credentials.walletId, function(err, changeAddress) {
+      // transfer the rest of asset back to our address
+      if (amount < selectedUtxos.amount) {
+        to.push({
+          "address": changeAddress,
+          "amount": selectedUtxos.amount - amount,
+          "assetId": asset.assetId
+        });
       }
-    };
 
-    colu.createTx('send', transfer, cb);
+      var transfer = {
+        sendutxo: selectedUtxos.utxos,
+        to: to,
+        flags: {
+          injectPreviousOutput: true
+        }
+      };
+
+      colu.createTx('send', transfer, cb);
+    });
   };
 
   root.createIssueTx = function(issuance, cb) {
@@ -910,7 +883,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       asset.unitSymbol = unitSymbol || root.getAssetSymbol(asset.assetId, asset);
     }
 
-    return formatAssetValue(amount, asset ? asset.divisible: 0) + ' ' + asset.unitSymbol.forAmount(amount);
+    return formatAssetValue(amount, asset ? asset.divisibility: 0) + ' ' + asset.unitSymbol.forAmount(amount);
   };
 
   root.broadcastTx = function(rawTx, financeTxId, cb) {
@@ -1328,52 +1301,57 @@ UnitSymbol.DEFAULT = UnitSymbol.create('unit', 'units');
 UnitSymbol.prototype.forAmount = function(amount) {
   return amount == 1 ? this.symbol : this.pluralSymbol;
 };
-angular.module('copayAssetViewTemplates', ['views/coloredcoins/includes/asset-status.html', 'views/coloredcoins/includes/available-balance.html', 'views/coloredcoins/landing.html', 'views/coloredcoins/modals/transfer-status.html', 'views/includes/confirm-tx.html', 'views/modals/txp-details.html']);
+angular.module('copayAssetViewTemplates', ['views/coloredcoins/includes/asset-status.html', 'views/coloredcoins/includes/available-balance.html', 'views/coloredcoins/landing.html', 'views/coloredcoins/modals/transfer-status.html', 'views/includes/confirm-tx.html', 'views/modals/tx-details.html', 'views/modals/txp-details.html']);
 
 angular.module("views/coloredcoins/includes/asset-status.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("views/coloredcoins/includes/asset-status.html",
-    "<div ng-if=\"type == 'broadcasted'\" class=\"popup-txsent\">\n" +
-    "    <i class=\"small-centered columns fi-check m20tp\"></i>\n" +
-    "    <div class=\"text-center size-18 text-white text-bold tu p20\">\n" +
-    "        <span translate>{{ status.broadcasted }}</span>\n" +
+    "<ion-modal-view ng-controller=\"txStatusController\">\n" +
+    "  <div ng-if=\"type == 'broadcasted'\" class=\"popup-txsent text-center\">\n" +
+    "    <i class=\"small-centered columns fi-check m30tp\" ng-style=\"{'color':color, 'border-color':color}\"></i>\n" +
+    "    <div ng-show=\"tx.amountStr\" class=\"m20t size-36 text-white\">\n" +
+    "      {{tx.assetAmountStr}}\n" +
+    "    </div>\n" +
+    "    <div class=\"size-16 text-gray\">\n" +
+    "      <span translate>{{ status.broadcasted }}</span>\n" +
+    "    </div>\n" +
+    "    <div class=\"text-center m20t\">\n" +
+    "      <a class=\"button outline round light-gray tiny small-4\" ng-click=\"cancel()\" translate>OKAY</a>\n" +
+    "    </div>\n" +
+    "  </div>\n" +
+    "\n" +
+    "\n" +
+    "  <div ng-if=\"type == 'created'\" class=\"popup-txsigned\">\n" +
+    "    <i class=\"small-centered columns fi-check m30tp\" ng-style=\"{'color':color, 'border-color':color}\"></i>\n" +
+    "    <div class=\"text-center size-18 tu text-bold p20\" ng-style=\"{'color':color}\">\n" +
+    "      <span translate>{{ status.created }}</span>\n" +
     "    </div>\n" +
     "    <div class=\"text-center\">\n" +
-    "        <a class=\"button outline round white tiny small-4\" ng-click=\"cancel()\" translate>OKAY</a>\n" +
+    "      <a class=\"button outline round light-gray tiny small-4\" ng-click=\"cancel()\" translate>OKAY</a>\n" +
     "    </div>\n" +
-    "</div>\n" +
+    "  </div>\n" +
     "\n" +
     "\n" +
-    "<div ng-if=\"type == 'created'\" class=\"popup-txsigned\">\n" +
-    "    <i class=\"small-centered columns fi-check m20tp\"></i>\n" +
-    "    <div class=\"text-center size-18 text-primary tu text-bold p20\">\n" +
-    "        <span translate>{{ status.created }}</span>\n" +
+    "\n" +
+    "  <div ng-if=\"type == 'accepted'\" class=\"popup-txsigned\">\n" +
+    "    <i class=\"small-centered columns fi-check m30tp\" ng-style=\"{'color':color, 'border-color':color}\"></i>\n" +
+    "    <div class=\"text-center size-18 text-primary tu text-bold p20\" ng-style=\"{'color':color}\">\n" +
+    "      <span translate>{{ status.accepted }}</span>\n" +
     "    </div>\n" +
     "    <div class=\"text-center\">\n" +
-    "        <a class=\"button outline round light-gray tiny small-4\" ng-click=\"cancel()\" translate>OKAY</a>\n" +
+    "      <a class=\"button outline round light-gray tiny small-4\" ng-click=\"cancel()\" translate>OKAY</a>\n" +
     "    </div>\n" +
-    "</div>\n" +
+    "  </div>\n" +
     "\n" +
-    "\n" +
-    "\n" +
-    "<div ng-if=\"type == 'accepted'\" class=\"popup-txsigned\">\n" +
-    "    <i class=\"small-centered columns fi-check m20tp\"></i>\n" +
-    "    <div class=\"text-center size-18 text-primary tu text-bold p20\">\n" +
-    "        <span translate>{{ status.accepted }}</span>\n" +
+    "  <div ng-if=\"type=='rejected'\" class=\"popup-txrejected\">\n" +
+    "    <i class=\"fi-x small-centered columns m30tp\" ng-style=\"{'color':color, 'border-color':color}\"></i>\n" +
+    "    <div class=\"text-center size-18 tu text-bold p20\" ng-style=\"{'color':color}\">\n" +
+    "      <span translate>{{ status.rejected }}</span>\n" +
     "    </div>\n" +
     "    <div class=\"text-center\">\n" +
-    "        <a class=\"button outline round light-gray tiny small-4\" ng-click=\"cancel()\" translate>OKAY</a>\n" +
+    "      <a class=\"button outline light-gray round tiny small-4\" ng-click=\"cancel()\" translate>OKAY</a>\n" +
     "    </div>\n" +
-    "</div>\n" +
-    "\n" +
-    "<div ng-if=\"type=='rejected'\" class=\"popup-txrejected\">\n" +
-    "    <i class=\"fi-x small-centered columns m20tp\"></i>\n" +
-    "    <div class=\"text-center size-18 tu text-warning text-bold p20\">\n" +
-    "        <span translate>{{ status.rejected }}</span>\n" +
-    "    </div>\n" +
-    "    <div class=\"text-center\">\n" +
-    "        <a class=\"button outline light-gray round tiny small-4\" ng-click=\"cancel()\" translate>OKAY</a>\n" +
-    "    </div>\n" +
-    "</div>\n" +
+    "  </div>\n" +
+    "</ion-modal-view>\n" +
     "");
 }]);
 
@@ -1516,11 +1494,183 @@ angular.module("views/includes/confirm-tx.html", []).run(["$templateCache", func
     "");
 }]);
 
+angular.module("views/modals/tx-details.html", []).run(["$templateCache", function($templateCache) {
+  $templateCache.put("views/modals/tx-details.html",
+    "<ion-modal-view ng-controller=\"txDetailsController\">\n" +
+    "  <ion-header-bar align-title=\"center\" class=\"tab-bar\" ng-style=\"{'background-color':color}\">\n" +
+    "    <div class=\"left-small\">\n" +
+    "      <a ng-click=\"cancel()\" class=\"p10\">\n" +
+    "        <span class=\"text-close\" translate>Close</span>\n" +
+    "      </a>\n" +
+    "    </div>\n" +
+    "    <h1 class=\"title ellipsis\" translate>Transaction</h1>\n" +
+    "  </ion-header-bar>\n" +
+    "\n" +
+    "  <ion-content ng-style=\"{'background-color': '#F6F7F9'}\">\n" +
+    "    <div class=\"modal-content\">\n" +
+    "      <div class=\"header-modal text-center\" ng-init=\"getAlternativeAmount(btx)\">\n" +
+    "        <div ng-show=\"btx.action != 'invalid'\">\n" +
+    "          <div ng-show=\"btx.action == 'received'\">\n" +
+    "            <img src=\"img/icon-receive-history.svg\" alt=\"sync\" width=\"50\">\n" +
+    "            <p class=\"m0 text-gray size-14\" translate>Received</p>\n" +
+    "          </div>\n" +
+    "          <div ng-show=\"btx.action == 'sent'\">\n" +
+    "            <img src=\"img/icon-sent-history.svg\" alt=\"sync\" width=\"50\">\n" +
+    "            <p class=\"m0 text-gray size-14\" translate>Sent</p>\n" +
+    "          </div>\n" +
+    "          <div ng-show=\"btx.action == 'moved'\">\n" +
+    "            <img src=\"img/icon-moved.svg\" alt=\"sync\" width=\"50\">\n" +
+    "            <p class=\"m0 text-gray size-14\" translate>Moved</p>\n" +
+    "          </div>\n" +
+    "\n" +
+    "          <div class=\"size-36\" ng-click=\"copyToClipboard(btx.amountStr, $event)\">\n" +
+    "            <span class=\"enable_text_select\">{{btx.amountStr}}</span>\n" +
+    "          </div>\n" +
+    "          <div class=\"alternative-amount\" ng-click=\"showRate=!showRate\" ng-init=\"showRate = false\">\n" +
+    "            <span class=\"label gray radius\" ng-show=\"!showRate && alternativeAmountStr && !btx.isAsset\">\n" +
+    "              {{alternativeAmountStr}}\n" +
+    "            </span>\n" +
+    "            <span class=\"size-12\" ng-show=\"showRate && alternativeAmountStr\">\n" +
+    "              {{rateStr}} ({{rateDate | amDateFormat:'MM/DD/YYYY HH:mm a'}})\n" +
+    "            </span>\n" +
+    "          </div>\n" +
+    "        </div>\n" +
+    "        <div ng-show=\"btx.action == 'invalid'\">\n" +
+    "          -\n" +
+    "        </div>\n" +
+    "      </div>\n" +
+    "\n" +
+    "      <h4 class=\"title m0\" translate>Details</h4>\n" +
+    "\n" +
+    "      <ul class=\"no-bullet size-14 m0\">\n" +
+    "        <li ng-if=\"!btx.hasMultiplesOutputs && btx.addressTo && btx.addressTo != 'N/A'\" class=\"line-b p10 oh\"\n" +
+    "          ng-click=\"copyToClipboard(btx.addressTo, $event)\">\n" +
+    "          <span class=\"text-gray\" translate>To</span>\n" +
+    "          <span class=\"right\">\n" +
+    "            <span ng-if=\"btx.merchant\">\n" +
+    "              <span ng-show=\"btx.merchant.pr.ca\"><i class=\"fi-lock color-greeni\"></i> {{btx.merchant.domain}}</span>\n" +
+    "              <span ng-show=\"!btx.merchant.pr.ca\"><i class=\"fi-unlock color-yellowi\"></i> {{btx.merchant.domain}}</span>\n" +
+    "            </span>\n" +
+    "            <span ng-if=\"!btx.merchant\">\n" +
+    "              <span ng-show=\"btx.labelTo\">{{btx.labelTo}}</span>\n" +
+    "              <contact ng-show=\"!btx.labelTo\" class=\"enable_text_select\" address=\"{{btx.addressTo}}\"></contact>\n" +
+    "            </span>\n" +
+    "          </span>\n" +
+    "        </li>\n" +
+    "\n" +
+    "        <li ng-show=\"btx.hasMultiplesOutputs\" class=\"line-b p10 oh\"\n" +
+    "          ng-click=\"showMultiplesOutputs = !showMultiplesOutputs\">\n" +
+    "          <span class=\"text-gray\" translate>Recipients</span>\n" +
+    "          <span class=\"right\">{{btx.recipientCount}}\n" +
+    "            <i ng-show=\"showMultiplesOutputs\" class=\"icon-arrow-up3 size-24\"></i>\n" +
+    "            <i ng-show=\"!showMultiplesOutputs\" class=\"icon-arrow-down3 size-24\"></i>\n" +
+    "          </span>\n" +
+    "        </li>\n" +
+    "\n" +
+    "        <div class=\"line-b\" ng-show=\"btx.hasMultiplesOutputs && showMultiplesOutputs\"\n" +
+    "          ng-repeat=\"output in btx.outputs\"\n" +
+    "          ng-include=\"'views/includes/output.html'\">\n" +
+    "        </div>\n" +
+    "\n" +
+    "        <li ng-if=\"btx.action == 'invalid'\" class=\"line-b p10 oh\">\n" +
+    "          <span class=\"right\" translate>\n" +
+    "            This transaction has become invalid; possibly due to a double spend attempt.\n" +
+    "          </span>\n" +
+    "        </li>\n" +
+    "\n" +
+    "        <li ng-if=\"btx.time\" class=\"line-b p10 oh\">\n" +
+    "          <span class=\"text-gray\" translate>Date</span>\n" +
+    "          <span class=\"right enable_text_select\">\n" +
+    "            <time>{{ btx.time * 1000 | amDateFormat:'MM/DD/YYYY HH:mm a'}}</time>\n" +
+    "            <time>({{ btx.time * 1000 | amTimeAgo}})</time>\n" +
+    "          </span>\n" +
+    "        </li>\n" +
+    "\n" +
+    "        <li class=\"line-b p10\" ng-show=\"btx.action != 'received' && !btx.isAsset\"\n" +
+    "          ng-click=\"copyToClipboard(btx.feeStr, $event)\">\n" +
+    "          <span class=\"text-gray\" translate>Fee</span>\n" +
+    "          <span class=\"right enable_text_select\">{{btx.feeStr}}</span>\n" +
+    "        </li>\n" +
+    "\n" +
+    "        <li class=\"line-b p10 oh\" ng-if=\"btx.message && btx.action != 'received'\"\n" +
+    "          ng-click=\"copyToClipboard(btx.message, $event)\">\n" +
+    "          <span class=\"text-gray\" translate>Description</span>\n" +
+    "          <span class=\"right enable_text_select\">{{btx.message}}</span>\n" +
+    "        </li>\n" +
+    "\n" +
+    "        <li ng-if=\"btx.merchant\" class=\"line-b p10 oh\"\n" +
+    "          ng-click=\"copyToClipboard(btx.merchant.pr.pd.memo, $event)\">\n" +
+    "          <span class=\"text-gray\" translate>Merchant message</span>\n" +
+    "          <span class=\"right enable_text_select\">\n" +
+    "            {{btx.merchant.pr.pd.memo}}\n" +
+    "          </span>\n" +
+    "        </li>\n" +
+    "\n" +
+    "        <li ng-if=\"btx.time && !btx.isAsset\" class=\"line-b p10 oh\">\n" +
+    "          <span class=\"text-gray\" translate>Confirmations</span>\n" +
+    "          <span class=\"right\" >\n" +
+    "            <span class=\"text-warning\" ng-show=\"!btx.confirmations || btx.confirmations == 0\" translate>\n" +
+    "              Unconfirmed\n" +
+    "            </span>\n" +
+    "            <span class=\"label gray radius\" ng-show=\"btx.confirmations>0 && !btx.safeConfirmed\">\n" +
+    "              {{btx.confirmations}}\n" +
+    "            </span>\n" +
+    "            <span class=\"label gray radius\" ng-show=\"btx.safeConfirmed\">\n" +
+    "              {{btx.safeConfirmed}}\n" +
+    "            </span>\n" +
+    "          </span>\n" +
+    "        </li>\n" +
+    "\n" +
+    "        <li class=\"p10 oh\" ng-show=\"btx.note && btx.note.body\">\n" +
+    "          <span class=\"text-gray\" translate>Comment</span>\n" +
+    "          <span class=\"right enable_text_select\">{{btx.note.body}}</span><br>\n" +
+    "          <span class=\"right text-italic text-gray size-12\">\n" +
+    "            <span translate>Edited by</span> <span>{{btx.note.editedByName}}</span>,\n" +
+    "            <time>{{btx.note.editedOn * 1000 | amTimeAgo}}</time></span>\n" +
+    "          </span>\n" +
+    "        </li>\n" +
+    "      </ul>\n" +
+    "\n" +
+    "      <div ng-if=\"btx.actions[0] && isShared\">\n" +
+    "        <h4 class=\"title m0\" translate>Participants</h4>\n" +
+    "        <ul class=\"no-bullet size-14 m0\">\n" +
+    "          <li class=\"line-b p10 text-gray\" ng-repeat=\"c in btx.actions\">\n" +
+    "            <i class=\"icon-contact size-24\"></i>\n" +
+    "            <span class=\"right\">\n" +
+    "              <i ng-if=\"c.type == 'reject'\" class=\"fi-x icon-sign x db\"></i>\n" +
+    "              <i ng-if=\"c.type == 'accept'\" class=\"fi-check icon-sign check db\"></i>\n" +
+    "            </span>\n" +
+    "            {{c.copayerName}} <span ng-if=\"c.copayerId == copayerId\">({{'Me'|translate}})</span>\n" +
+    "          </li>\n" +
+    "        </ul>\n" +
+    "      </div>\n" +
+    "\n" +
+    "      {{ explorerLink = btx.isAsset\n" +
+    "          ? 'http://coloredcoins.org/explorer/' + (getShortNetworkName() == 'test' ? 'testnet/' : '') + 'tx/' + btx.txid\n" +
+    "          : 'https://' + (getShortNetworkName() == 'test' ? 'test-' : '') + 'insight.bitpay.com/tx/' + btx.txid;\"\"\n" +
+    "      }}\n" +
+    "      <div ng-show=\"btx.txid\" class=\"tx-details-blockchain\">\n" +
+    "        <div class=\"text-center m20t\">\n" +
+    "          <button class=\"button outline round dark-gray tiny\" ng-click=\"$root.openExternalLink(explorerLink)\">\n" +
+    "            <span class=\"text-gray\" translate>See it on the blockchain</span>\n" +
+    "          </button>\n" +
+    "          <button class=\"button outline round dark-gray tiny\" ng-click=\"showCommentPopup()\">\n" +
+    "            <span class=\"text-gray\" translate ng-show=\"!btx.note\">Add comment</i></span>\n" +
+    "            <span class=\"text-gray\" translate ng-show=\"btx.note\">Edit comment</span>\n" +
+    "          </button>\n" +
+    "        </div>\n" +
+    "      </div>\n" +
+    "    </div>\n" +
+    "  </ion-content>\n" +
+    "</ion-modal-view>\n" +
+    "");
+}]);
+
 angular.module("views/modals/txp-details.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("views/modals/txp-details.html",
     "{{ maybeAssetPrefix = tx.isAsset\n" +
     "    ? (tx.customData.asset.action === 'transfer' ? 'Asset Transfer' : 'New Asset')\n" +
-    "    : 'Payment' }}\n" +
+    "    : 'Payment';\"\" }}\n" +
     "\n" +
     "<ion-modal-view ng-controller=\"txpDetailsController\">\n" +
     "  <ion-header-bar align-title=\"center\" class=\"tab-bar\" ng-style=\"{'background-color':color}\">\n" +
