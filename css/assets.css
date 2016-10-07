@@ -1,3 +1,19 @@
+.sidebar ion-content {
+  top: 175px !important;
+}
+
+.sidebar header {
+  border-bottom: none !important;
+}
+
+.sidebar ion-content {
+  border-top: 1px solid #384B5F;
+}
+
+.sidebar li.nav-item.selected {
+  background-color: rgba(0, 0, 0, 0.45) !important;
+}
+
 .property-name {
     text-transform: capitalize;
 }
