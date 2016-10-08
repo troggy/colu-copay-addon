@@ -794,26 +794,29 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       return cb({ message: 'Not enough assets' });
     }
 
-    addressService.getChangeAddress(fc.credentials.walletId, function(err, changeAddress) {
-      // transfer the rest of asset back to our address
-      if (amount < selectedUtxos.amount) {
+    var transfer = {
+      sendutxo: selectedUtxos.utxos,
+      to: to,
+      flags: {
+        injectPreviousOutput: true
+      }
+    };
+
+    // we have change. Transfer the rest of asset back to our address
+    if (amount < selectedUtxos.amount) {
+      fc.getNextChangeAddress({}, function(err, changeAddress) {
+        if (err) return cb(err);
         to.push({
-          "address": changeAddress,
+          "address": changeAddress.address,
           "amount": selectedUtxos.amount - amount,
           "assetId": asset.assetId
         });
-      }
-
-      var transfer = {
-        sendutxo: selectedUtxos.utxos,
-        to: to,
-        flags: {
-          injectPreviousOutput: true
-        }
-      };
-
+        transfer.to = to;
+        colu.createTx('send', transfer, cb);
+      });
+    } else {
       colu.createTx('send', transfer, cb);
-    });
+    }
   };
 
   root.createIssueTx = function(issuance, cb) {

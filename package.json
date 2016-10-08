@@ -1,6 +1,6 @@
 {
   "name": "colu-copay-addon",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Colu support for Copay wallet",
   "main": "js/coluCopayAddon.js",
   "scripts": {
