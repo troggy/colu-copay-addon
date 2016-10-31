@@ -1,6 +1,6 @@
 {
   "name": "colu-copay-addon",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Colu support for Copay wallet",
   "main": "js/coluCopayAddon.js",
   "scripts": {
@@ -24,7 +24,7 @@
   ],
   "dependencies": {
     "aws-sdk": "^2.1.44",
-    "colu": "^0.10.4",
+    "colu": "^0.10.26",
     "formidable": "^1.0.17"
   },
   "devDependencies": {
