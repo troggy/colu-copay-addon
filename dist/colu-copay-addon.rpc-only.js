@@ -1153,11 +1153,14 @@ angular.module('copayAddon.colu')
     var root = {};
 
     var coluPromise = function(network) {
-      if (!coluConfig.apiKey && network == 'livenet') {
-        throw new Error("Must have apiKey for livenet");
-      }
-
       return $q(function(resolve, reject) {
+        if (coluConfig.mode !== 'sdk') {
+          return resolve({});
+        }
+        if (!coluConfig.apiKey && network == 'livenet') {
+          return reject("Must have apiKey for livenet");
+        }
+
         var colu = new Colu({
           network: network,
           apiKey: network == 'livenet' ? coluConfig.apiKey : undefined
