@@ -7,11 +7,11 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-html2js');
 
   grunt.initConfig({
-    clean: ['./dist/templates.js'],
+    clean: ['./dist/templates.js', './dist/app.js'],
     concat: {
       options: {
       },
-      full: {
+      app: {
         src: [
           './js/coluCopayAddon.js',
           './js/init.js',
@@ -23,32 +23,27 @@ module.exports = function (grunt) {
           './js/filters/*.js',
           './js/services/*.js',
           './js/models/*.js',
-          './js/directives/*.js',
+          './js/directives/*.js'
+        ],
+        dest: './dist/app.js'
+      },
+      full: {
+        src: [
           './dist/templates.js',
           './bower_components/ng-file-upload/ng-file-upload.min.js',
-          'node_modules/colu/client/colu.client.js'
+          './node_modules/colu/client/colu.client.js',
+          './dist/app.js'
         ],
         dest: './dist/colu-copay-addon.js'
       },
       rpcOnly: {
         src: [
-          './js/coluCopayAddon.js',
-          './js/init.js',
-          './js/overrides/*.js',
-          './js/controllers/assets.js',
-          './js/controllers/processingTx.js',
-          './js/controllers/issue.js',
-          './js/controllers/transfer.js',
-          './js/filters/*.js',
-          './js/services/*.js',
-          './js/models/*.js',
-          './js/directives/*.js',
           './dist/templates.js',
-          './bower_components/ng-file-upload/ng-file-upload.min.js'
+          './bower_components/ng-file-upload/ng-file-upload.min.js',
+          './dist/app.js'
         ],
         dest: './dist/colu-copay-addon.rpc-only.js'
       }
-
     },
     html2js: {
       app: {
@@ -65,8 +60,10 @@ module.exports = function (grunt) {
   });
 
   grunt.registerTask('default', [
+    'concat:app',
     'html2js',
-    'concat',
+    'concat:full',
+    'concat:rpcOnly',
     'clean'
   ]);
 
