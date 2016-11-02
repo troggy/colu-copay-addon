@@ -24,7 +24,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     self.supportedAssets = supportedAssets;
   };
 
-  var disableFocusListener = $rootScope.$on('Local/NewFocusedWallet', function() {
+  $rootScope.$on('Local/NewFocusedWallet', function() {
     root.assets = null;
     root.assetsMap = {};
     root.error = null;
@@ -38,7 +38,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     root.onGoingProcess = name;
   };
 
-  var disableBalanceListener = $rootScope.$on('Local/BalanceUpdated', function (event, balance) {
+  var getAssetsFromAddresses = function() {
     root.assets = null;
     root.assetsMap = null;
     root.error = null;
@@ -46,7 +46,6 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     self.assets = $q.defer();
     self.isAvailable = false;
     $rootScope.$emit('ColoredCoins/Error', null);
-    var addresses = lodash.pluck(balance.byAddress, 'address');
 
     $q.all([root.getAssets(), root.getColorTransactions()]).then(function(result) {
       self.isAvailable = true;
@@ -58,8 +57,8 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       self._queued = {};
     });
 
-    if (addresses.length) {
-      colu.getTransactions(addresses, function(err, body) {
+    if (self.addresses.length) {
+      colu.getTransactions(self.addresses, function(err, body) {
         if (err) {
           self.txs.reject(err);
         } else {
@@ -76,7 +75,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     }
 
     _setOngoingProcess('Getting assets');
-    _fetchAssets(addresses, function (err, assetsMap) {
+    _fetchAssets(self.addresses, function (err, assetsMap) {
       if (err) {
         var msg = err.error || err.message || err.code;
         root.error = msg;
@@ -91,6 +90,15 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       }
       _setOngoingProcess();
     });
+  };
+
+  $rootScope.$on('Local/BalanceUpdated', function (event, balance) {
+    self.addresses = lodash.pluck(balance.byAddress, 'address');
+    getAssetsFromAddresses();
+  });
+
+  $rootScope.$on('Local/RefreshAssets', function () {
+    getAssetsFromAddresses();
   });
 
   root.whenAvailable = function(cb) {
@@ -102,11 +110,6 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
       self._queued[cb] = cb;
     }
   };
-
-  $rootScope.$on('$destroy', function() {
-    disableBalanceListener();
-    disableFocusListener();
-  });
 
   var extractAssets = function(addressInfo) {
     var assets = [];
