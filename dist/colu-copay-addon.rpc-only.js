@@ -1025,7 +1025,7 @@ angular.module('copayAddon.colu')
 'use strict';
 
 function ColoredCoins($rootScope, profileService, addressService, colu, $log,
-                      $q, $timeout, lodash, configService, bitcore, supportedAssets) {
+                      $q, $timeout, lodash, configService, bitcore) {
   var root = {},
       lockedUtxos = [],
       self = this;
@@ -1035,7 +1035,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   self.assets = $q.defer();
   self._queued = {};
   self.isAvailable = false;
-  self.supportedAssets = supportedAssets;
+  self.supportedAssets = [];
 
   // UTXOs "cache"
   root.txidToUTXO = {};
@@ -1043,6 +1043,10 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   root.txs = null;
   root.assetsMap = {};
   root.error = null;
+
+  root.setSupportedAssets = function(supportedAssets) {
+    self.supportedAssets = supportedAssets;
+  };
 
   var disableFocusListener = $rootScope.$on('Local/NewFocusedWallet', function() {
     root.assets = null;
@@ -1515,16 +1519,10 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
 
 angular.module('copayAddon.colu').provider('coloredCoins', function() {
 
-  var supportedAssets;
-
-  this.setSupportedAssets = function(supportedAssets) {
-    this.supportedAssets = supportedAssets;
-  };
-
   this.$get = function($rootScope, profileService, addressService, colu, $log,
                         $q, $timeout, lodash, configService, bitcore) {
       return new ColoredCoins($rootScope, profileService, addressService, colu, $log,
-                            $q, $timeout, lodash, configService, bitcore, this.supportedAssets);
+                            $q, $timeout, lodash, configService, bitcore);
   };
 });
 
