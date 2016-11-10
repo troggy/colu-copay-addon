@@ -669,22 +669,6 @@ angular.module('copayAddon.colu').config(function ($stateProvider) {
 
 angular.module('copayAddon.colu').config(function ($provide) {
 
-  $provide.decorator('profileService', function ($delegate, $rootScope) {
-    var defaultSetWalletClient = $delegate.setWalletClient;
-
-    // do not enforce backups
-    $delegate.needsBackup = function(client, cb) {
-      return cb(false);
-    };
-
-    return $delegate;
-  });
-});
-
-'use strict';
-
-angular.module('copayAddon.colu').config(function ($provide) {
-
   $provide.decorator('txFormatService', function ($delegate, $rootScope) {
     var defaultProcessTx = $delegate.processTx;
 
