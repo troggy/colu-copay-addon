@@ -177,6 +177,10 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     return self.assets.promise;
   };
 
+  root.getAssetData = function(assetId, cb) {
+    return colu.getAssetData(assetId, cb);
+  };
+
   root.getColoredUtxos = function() {
     return lodash.map(lodash.flatten(lodash.pluck(root.assets, 'utxos')), function(utxo) { return utxo.txid + ":" + utxo.index; });
   };
@@ -213,6 +217,7 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
     if (!groupedAsset) {
       groupedAsset = {
                       assetId: asset.assetId,
+                      assetName: metadata.assetName,
                       amount: 0,
                       network: network,
                       divisibility: metadata.divisibility,

@@ -93,6 +93,10 @@ angular.module('copayAddon.colu')
       _request("coloredCoins.getAddressInfo", { address: address }, cb);
     };
 
+    root.getAssetData = function(assetId, cb) {
+      _request("coloredCoins.getAssetData", { assetId: assetId }, cb);
+    };
+
     root.issueAsset = function(params, cb) {
       $log.debug("Issuing asset via Colu: " + JSON.stringify(params));
 

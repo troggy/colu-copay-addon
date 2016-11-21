@@ -75,6 +75,12 @@ angular.module('copayAddon.colu')
       });
     };
 
+    root.getAssetData = function(assetId, cb) {
+      withColu(function(colu) {
+        colu.coloredCoins.getAssetData({ assetId: assetId }, withLog(cb));
+      });
+    };
+
     root.issueAsset = function(args, cb) {
       withColu(function(colu) {
         $log.debug("Issuing asset via Colu: " + JSON.stringify(args));
