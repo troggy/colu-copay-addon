@@ -1,8 +1,7 @@
 [Copay](https://github.com/bitpay/copay) addon with support for [Colu](http://colu.co).
 
 Not really an addon, since Copay doesn't have addon system, but rather an easy to drop in
-bunch of code that makes Copay aware of ColoredCoins. Works for Copay 1.8.*,
-may not work with other versions.
+bunch of code that makes Copay aware of ColoredCoins. Works for Copay 2.7.0+, may not work with other versions.
 
 # Setup
 
@@ -36,14 +35,14 @@ coluConfigProvider.config({
   mode: 'rpc',
   rpcConfig: {
     livenet: {
-      rpcHost: '<YOUR COLU MAINNET SERVER HOST>',      // Colu JSON RPC host
-      rpcUsername: '<YOUR COLU MAINNET SERVER AUTH USERNAME>',  // (optional) Colu JSON RPC username for Basic Auth
-      rpcPassword: '<YOUR COLU MAINNET SERVER AUTH PASSWORD>',  // (optional) Colu JSON RPC password for Basic Auth
+      baseUrl: '<YOUR COLU MAINNET SERVER HOST>',      // Colu JSON RPC host
+      authName: '<YOUR COLU MAINNET SERVER AUTH USERNAME>',  // (optional) Colu JSON RPC username for Basic Auth
+      authSecret: '<YOUR COLU MAINNET SERVER AUTH PASSWORD>',  // (optional) Colu JSON RPC password for Basic Auth
     },
     testnet: {
-      rpcHost: '<YOUR COLU TESTNET SERVER HOST>',      // Colu JSON RPC host
-      rpcUsername: '<YOUR COLU TESTNET SERVER AUTH USERNAME>',  // (optional) Colu JSON RPC username for Basic Auth
-      rpcPassword: '<YOUR COLU TESTNET SERVER AUTH PASSWORD>',  // (optional) Colu JSON RPC password for Basic Auth
+      baseUrl: '<YOUR COLU TESTNET SERVER HOST>',      // Colu JSON RPC host
+      authName: '<YOUR COLU TESTNET SERVER AUTH USERNAME>',  // (optional) Colu JSON RPC username for Basic Auth
+      authSecret: '<YOUR COLU TESTNET SERVER AUTH PASSWORD>',  // (optional) Colu JSON RPC password for Basic Auth
     }
   }
 });
