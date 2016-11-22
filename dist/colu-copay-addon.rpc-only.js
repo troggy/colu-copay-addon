@@ -1,4 +1,4 @@
-angular.module('copayAssetViewTemplates', ['views/coloredcoins/includes/asset-status.html', 'views/coloredcoins/includes/available-balance.html', 'views/coloredcoins/modals/transfer-status.html', 'views/disclaimer.html', 'views/includes/confirm-tx.html', 'views/modals/tx-details.html', 'views/modals/txp-details.html']);
+angular.module('copayAssetViewTemplates', ['views/coloredcoins/includes/asset-status.html', 'views/coloredcoins/includes/available-balance.html', 'views/coloredcoins/modals/transfer-status.html', 'views/includes/confirm-tx.html', 'views/modals/tx-details.html', 'views/modals/txp-details.html']);
 
 angular.module("views/coloredcoins/includes/asset-status.html", []).run(["$templateCache", function($templateCache) {
   $templateCache.put("views/coloredcoins/includes/asset-status.html",
@@ -80,55 +80,6 @@ angular.module("views/coloredcoins/modals/transfer-status.html", []).run(["$temp
     "    rejected: 'Asset Transfer Rejected'\n" +
     "   };\"\" }}\n" +
     "<div ng-include=\"'views/coloredcoins/includes/asset-status.html'\"></div>\n" +
-    "");
-}]);
-
-angular.module("views/disclaimer.html", []).run(["$templateCache", function($templateCache) {
-  $templateCache.put("views/disclaimer.html",
-    "<div class=\"splash extra-padding-bottom p20t content text-center\"\n" +
-    "  ng-style=\"{'background-color': index.secondaryColor }\"\n" +
-    "  ng-controller=\"disclaimerController as disclaimer\" ng-init=\"disclaimer.init()\">\n" +
-    "  <div class=\"row\">\n" +
-    "    <div class=\"medium-centered small-centered large-centered columns size-14\">\n" +
-    "      <div class=\"cc-logo-holder negative\">\n" +
-    "        <logo ng-if=\"!sidebar.isWindowsPhoneApp\" negative=\"true\" width=\"120\"></logo>\n" +
-    "        <logo ng-if=\"sidebar.isWindowsPhoneApp\" negative=\"true\" width=\"120\"></logo>\n" +
-    "      </div>\n" +
-    "      <span class=\"text-bold text-white\" translate>WELCOME TO COLU WALLET</span>\n" +
-    "      <p class=\"text-gray m0 text-light\" translate>A multisignature colored coins wallet</p>\n" +
-    "    </div>\n" +
-    "  </div>\n" +
-    "  <div class=\"row\">\n" +
-    "    <div class=\"scrollArea\" ng-style=\"{'background-color': index.secondaryColor }\">\n" +
-    "      <p class=\"enable_text_select m0\">\n" +
-    "        <div class=\"size-14 text-gray\" translate>Terms of Use</div>\n" +
-    "        <div class=\"cc-disclaimer\">\n" +
-    "            <p>The Copay Colored Coins wallet is meant for testing purposes and provided AS-IS.</p>\n" +
-    "            <p>USE AT YOUR OWN RISK.</p>\n" +
-    "            <p><b>No Warranty:</b> Colored Coins does not warrant for Software and supplies it on an “as-is” and “as-available” basis. Your Use of Software is at your own risk and under your liability. Colored Coins makes no warranty that (i) the Software will meet your requirements, including providing you with any relevant information or reaching a relevant audience and (ii) the Software will be uninterrupted, timely, secure, or error-free and (iii) the results that may be obtained from the Use of the Software will be accurate or reliable and (iv) the quality of any products, services, information, or other material purchased or obtained by You through Software will meet your expectations, or (v) any errors in the Software will be corrected.</p>\n" +
-    "            <p><b>Liability:</b> For no case and for no reason shall Colored Coins be held liable for any damage, direct or indirect, consequential, exemplary, physical or special, to You, any User or any 3rd party due to its misperformance of duties herein. Colored Coins provides the Software on an AS-IS basis and shall not be held liable, to the extent permitted by law, by any case of misconduct, negligence, gross negligence, malice or any other mean, to any damages or loss of property, including damages to: virtual property, reputation and business reputation, user account information including login information, loss of profit, loss of good name, all resulting from the use or inability to use Software rendered by Colored Coins.</p>\n" +
-    "        </div>\n" +
-    "      </p>\n" +
-    "    </div>\n" +
-    "  </div>\n" +
-    "\n" +
-    "  <div class=\"row\">\n" +
-    "    <p ng-show=\"disclaimer.lang != 'en'\">\n" +
-    "      <a class=\"center\" ng-click=\"$root.openExternalLink('https://copay.io/disclaimer')\" translate>Official English Disclaimer</a>\n" +
-    "    </p>\n" +
-    "  </div>\n" +
-    "  <div>\n" +
-    "      <p class=\"text-gray columns size-12\" translate>I affirm that I have read, understood, and agree with these terms.</p>\n" +
-    "  </div>\n" +
-    "  <div class=\"row\">\n" +
-    "\n" +
-    "    <div class=\"start-button columns button-box\">\n" +
-    "      <button ng-click=\"disclaimer.accept()\" class=\"button black expand round size-12 text-spacing m0\" translate>\n" +
-    "        I AGREE. GET STARTED\n" +
-    "      </button>\n" +
-    "    </div>\n" +
-    "  </div>\n" +
-    "</div>\n" +
     "");
 }]);
 
