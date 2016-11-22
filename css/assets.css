@@ -138,11 +138,7 @@
 }
 
 .cc-disclaimer {
-    background-color: #ffffff;
-}
-
-.cc-disclaimer p {
-    font-size: 14px;
+    text-align: left;
 }
 
 .cc-logo-holder {

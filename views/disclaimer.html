@@ -1,0 +1,44 @@
+<div class="splash extra-padding-bottom p20t content text-center"
+  ng-style="{'background-color': index.secondaryColor }"
+  ng-controller="disclaimerController as disclaimer" ng-init="disclaimer.init()">
+  <div class="row">
+    <div class="medium-centered small-centered large-centered columns size-14">
+      <div class="cc-logo-holder negative">
+        <logo ng-if="!sidebar.isWindowsPhoneApp" negative="true" width="120"></logo>
+        <logo ng-if="sidebar.isWindowsPhoneApp" negative="true" width="120"></logo>
+      </div>
+      <span class="text-bold text-white" translate>WELCOME TO COLU WALLET</span>
+      <p class="text-gray m0 text-light" translate>A multisignature colored coins wallet</p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="scrollArea" ng-style="{'background-color': index.secondaryColor }">
+      <p class="enable_text_select m0">
+        <div class="size-14 text-gray" translate>Terms of Use</div>
+        <div class="cc-disclaimer">
+            <p>The Copay Colored Coins wallet is meant for testing purposes and provided AS-IS.</p>
+            <p>USE AT YOUR OWN RISK.</p>
+            <p><b>No Warranty:</b> Colored Coins does not warrant for Software and supplies it on an “as-is” and “as-available” basis. Your Use of Software is at your own risk and under your liability. Colored Coins makes no warranty that (i) the Software will meet your requirements, including providing you with any relevant information or reaching a relevant audience and (ii) the Software will be uninterrupted, timely, secure, or error-free and (iii) the results that may be obtained from the Use of the Software will be accurate or reliable and (iv) the quality of any products, services, information, or other material purchased or obtained by You through Software will meet your expectations, or (v) any errors in the Software will be corrected.</p>
+            <p><b>Liability:</b> For no case and for no reason shall Colored Coins be held liable for any damage, direct or indirect, consequential, exemplary, physical or special, to You, any User or any 3rd party due to its misperformance of duties herein. Colored Coins provides the Software on an AS-IS basis and shall not be held liable, to the extent permitted by law, by any case of misconduct, negligence, gross negligence, malice or any other mean, to any damages or loss of property, including damages to: virtual property, reputation and business reputation, user account information including login information, loss of profit, loss of good name, all resulting from the use or inability to use Software rendered by Colored Coins.</p>
+        </div>
+      </p>
+    </div>
+  </div>
+
+  <div class="row">
+    <p ng-show="disclaimer.lang != 'en'">
+      <a class="center" ng-click="$root.openExternalLink('https://copay.io/disclaimer')" translate>Official English Disclaimer</a>
+    </p>
+  </div>
+  <div>
+      <p class="text-gray columns size-12" translate>I affirm that I have read, understood, and agree with these terms.</p>
+  </div>
+  <div class="row">
+
+    <div class="start-button columns button-box">
+      <button ng-click="disclaimer.accept()" class="button black expand round size-12 text-spacing m0" translate>
+        I AGREE. GET STARTED
+      </button>
+    </div>
+  </div>
+</div>
