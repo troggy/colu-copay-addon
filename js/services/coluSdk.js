@@ -24,14 +24,19 @@ angular.module('copayAddon.colu')
       });
     };
 
+    var handleColuError = function(err) {
+      $log.error('Colu error: ' + err);
+      return err;
+    };
+
     var colu = {
-      testnet: coluPromise('testnet'),
-      livenet: coluPromise('livenet')
+      testnet: coluPromise('testnet').catch(handleColuError),
+      livenet: coluPromise('livenet').catch(handleColuError)
     };
 
     var withColu = function(func) {
       var network = profileService.focusedClient.credentials.network;
-      colu[network].then(func);
+      colu[network].then(func).catch(handleColuError);
     };
 
     var withLog = function(cb) {
@@ -75,9 +80,9 @@ angular.module('copayAddon.colu')
       });
     };
 
-    root.getAssetData = function(assetId, cb) {
+    root.getAssetHolders = function(assetId, cb) {
       withColu(function(colu) {
-        colu.coloredCoins.getAssetData({ assetId: assetId }, withLog(cb));
+        colu.coloredCoins.getStakeHolders(assetId, withLog(cb));
       });
     };
 

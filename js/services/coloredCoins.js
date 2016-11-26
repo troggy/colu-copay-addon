@@ -178,7 +178,17 @@ function ColoredCoins($rootScope, profileService, addressService, colu, $log,
   };
 
   root.getAssetData = function(assetId, cb) {
-    return colu.getAssetData(assetId, cb);
+    return colu.getAssetHolders(assetId, function(err, data) {
+      if (err) return cb(err);
+      var args = {
+        assetId: assetId,
+        utxo: {
+          txid: data.someUtxo.split(':')[0],
+          index: data.someUtxo.split(':')[1]
+        }
+      };
+      return colu.getAssetMetadata(args, cb);
+    });
   };
 
   root.getColoredUtxos = function() {

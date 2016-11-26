@@ -17,7 +17,7 @@ angular.module('copayAddon.colu')
 
     var _handleErrorResponse = function(response, cb) {
       $log.error(response.status + ': ' + JSON.stringify(response.data));
-      cb(response.status == 500 ? 'Server error' : response.data);
+      cb(response.status == 500 || response.status < 0 ? 'Server error' : response.data);
     };
 
     var withLog = function(cb) {
@@ -93,8 +93,8 @@ angular.module('copayAddon.colu')
       _request("coloredCoins.getAddressInfo", { address: address }, cb);
     };
 
-    root.getAssetData = function(assetId, cb) {
-      _request("coloredCoins.getAssetData", { assetId: assetId }, cb);
+    root.getAssetHolders = function(assetId, cb) {
+      _request("coloredCoins.getStakeHolders", { assetId: assetId }, cb);
     };
 
     root.issueAsset = function(params, cb) {
