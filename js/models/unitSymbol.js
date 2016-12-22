@@ -20,5 +20,5 @@ UnitSymbol.create = function(symbol, pluralSymbol) {
 UnitSymbol.DEFAULT = UnitSymbol.create('unit', 'units');
 
 UnitSymbol.prototype.forAmount = function(amount) {
-  return amount == 1 ? this.symbol : this.pluralSymbol;
+  return amount <= 1 ? this.symbol : this.pluralSymbol;
 };
